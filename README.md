@@ -43,7 +43,7 @@
 | 不关闭显示器电源 | V2 仍然通过软件遮罩实现，避免硬件兼容问题 |
 | 不监听 agent 状态 | 飞书通知、任务完成提醒属于后续方向 |
 | 不做触发角 | 触发角计划在后续版本评估 |
-| 不做 notarize | 目前面向本地打包和同事试用 |
+| 不做 notarize | 目前面向本地打包、DMG 分发和同事试用 |
 
 ## 使用方式
 
@@ -53,7 +53,7 @@
 4. 使用菜单栏、Control + Option + Command + B 或 Esc 退出。
 5. 在设置里选择「仅外接显示器」或「所有显示器」。
 
-如果本地构建没有 notarize，macOS 首次打开时可能需要右键选择「打开」。
+Release 下载建议优先选择 `VibeBlank.dmg`。如果本地构建没有 notarize，macOS 首次打开时可能需要右键选择「打开」。
 
 ## 架构概览
 
@@ -80,7 +80,7 @@ flowchart LR
 | 屏幕识别 | CoreGraphics | 区分内置屏和外接屏 |
 | 设置存储 | UserDefaults | 保存覆盖范围、显示内容和触发设置 |
 | 构建 | Swift Package Manager | 管理 target、构建和检查 |
-| 打包 | shell scripts | 生成 `.app`、`.zip` 和图标资源 |
+| 打包 | shell scripts | 生成 `.app`、`.zip`、`.dmg` 和图标资源 |
 
 ## 项目结构
 
@@ -91,7 +91,7 @@ flowchart LR
 | `Checks/VibeBlankCoreChecks/` | 不依赖 XCTest 的核心行为检查 |
 | `assets/` | 小黑马 SVG、菜单栏图标和 `.icns` |
 | `scripts/generate_icon.sh` | 从源图生成 app 图标和菜单栏图标 |
-| `scripts/package_app.sh` | 构建 release 二进制并打包 `.app` / `.zip` |
+| `scripts/package_app.sh` | 构建 release 二进制并打包 `.app` / `.zip` / `.dmg` |
 | `docs/` | V1/V2 需求和技术方案 |
 
 ## 构建与验证
@@ -108,6 +108,7 @@ bash scripts/package_app.sh
 ```text
 dist/VibeBlank.app
 dist/VibeBlank.zip
+dist/VibeBlank.dmg
 ```
 
 更详细的设计和实现背景见：
@@ -129,6 +130,7 @@ dist/VibeBlank.zip
 | 开启按键退出 | 任意键退出，按键不传给底层应用 |
 | 选择自定义文字 | 黑屏上显示自定义提示 |
 | 打包 `.app` | `Info.plist` 显示名为「黑码码」，包含 `heimama-icon.icns` |
+| 打包 `.dmg` | DMG 卷名为「黑码码」，包含「黑码码.app」和 Applications 快捷方式 |
 
 ## 当前边界
 

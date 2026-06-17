@@ -3,8 +3,11 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PRODUCT_NAME="VibeBlank"
+APP_DISPLAY_NAME="黑码码"
 DIST_DIR="$ROOT_DIR/dist"
 APP_DIR="$DIST_DIR/$PRODUCT_NAME.app"
+DMG_STAGING_DIR="$DIST_DIR/dmg-staging"
+DMG_FILE="$DIST_DIR/$PRODUCT_NAME.dmg"
 CONTENTS_DIR="$APP_DIR/Contents"
 MACOS_DIR="$CONTENTS_DIR/MacOS"
 RESOURCES_DIR="$CONTENTS_DIR/Resources"
@@ -69,11 +72,24 @@ if command -v codesign >/dev/null 2>&1; then
     codesign --force --deep --sign - "$APP_DIR" >/dev/null
 fi
 
-rm -f "$DIST_DIR/$PRODUCT_NAME.zip"
+rm -f "$DIST_DIR/$PRODUCT_NAME.zip" "$DMG_FILE"
 (
     cd "$DIST_DIR"
     ditto -c -k --keepParent "$PRODUCT_NAME.app" "$PRODUCT_NAME.zip"
 )
 
+rm -rf "$DMG_STAGING_DIR"
+mkdir -p "$DMG_STAGING_DIR"
+ditto "$APP_DIR" "$DMG_STAGING_DIR/$APP_DISPLAY_NAME.app"
+ln -s /Applications "$DMG_STAGING_DIR/Applications"
+hdiutil create \
+    -volname "$APP_DISPLAY_NAME" \
+    -srcfolder "$DMG_STAGING_DIR" \
+    -ov \
+    -format UDZO \
+    "$DMG_FILE" >/dev/null
+rm -rf "$DMG_STAGING_DIR"
+
 echo "Packaged $APP_DIR"
 echo "Created $DIST_DIR/$PRODUCT_NAME.zip"
+echo "Created $DMG_FILE"
