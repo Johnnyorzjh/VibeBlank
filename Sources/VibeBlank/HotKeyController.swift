@@ -7,7 +7,19 @@ final class HotKeyController {
 
     private var hotKeyRef: EventHotKeyRef?
     private var eventHandlerRef: EventHandlerRef?
-    private let hotKeyID = EventHotKeyID(signature: 0x56424C4B, id: 1)
+    private let keyCode: UInt32
+    private let modifiers: UInt32
+    private let hotKeyID: EventHotKeyID
+
+    init(
+        keyCode: UInt32 = UInt32(kVK_ANSI_B),
+        modifiers: UInt32 = UInt32(controlKey | optionKey | cmdKey),
+        id: UInt32 = 1
+    ) {
+        self.keyCode = keyCode
+        self.modifiers = modifiers
+        self.hotKeyID = EventHotKeyID(signature: 0x56424C4B, id: id)
+    }
 
     deinit {
         unregister()
@@ -65,8 +77,8 @@ final class HotKeyController {
 
         var registeredHotKey: EventHotKeyRef?
         let registerStatus = RegisterEventHotKey(
-            UInt32(kVK_ANSI_B),
-            UInt32(controlKey | optionKey | cmdKey),
+            keyCode,
+            modifiers,
             hotKeyID,
             GetApplicationEventTarget(),
             0,

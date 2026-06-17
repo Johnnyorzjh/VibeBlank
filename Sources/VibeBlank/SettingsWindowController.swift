@@ -17,7 +17,7 @@ final class SettingsWindowController {
             backing: .buffered,
             defer: false
         )
-        window.title = "VibeBlank Settings"
+        window.title = AppCopy.settingsWindowTitle
         window.contentView = hostingView
         window.isReleasedWhenClosed = false
         window.center()

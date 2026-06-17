@@ -9,9 +9,9 @@ public enum OverlayScope: String, Codable, CaseIterable, Equatable, Identifiable
     public var displayName: String {
         switch self {
         case .externalDisplays:
-            return "External displays only"
+            return "仅外接显示器"
         case .allDisplays:
-            return "All displays"
+            return "所有显示器"
         }
     }
 }
@@ -27,13 +27,13 @@ public enum OverlayContentMode: String, Codable, CaseIterable, Equatable, Identi
     public var displayName: String {
         switch self {
         case .blank:
-            return "Blank"
+            return "纯黑"
         case .time:
-            return "Time"
+            return "时间"
         case .statusText:
-            return "Status text"
+            return "状态文字"
         case .customText:
-            return "Custom text"
+            return "自定义文字"
         }
     }
 }
@@ -66,6 +66,6 @@ public struct AppSettings: Codable, Equatable {
 
     public var sanitizedCustomText: String {
         let trimmed = customText.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? "VibeBlank Active" : trimmed
+        return trimmed.isEmpty ? "黑码码已开启" : trimmed
     }
 }

@@ -6,6 +6,8 @@ final class OverlayWindow: NSWindow {
     private let escapeKeyCode: UInt16 = 53
     private let settings: AppSettings
     private let exitHandler: () -> Void
+    private let transition = OverlayTransitionModel()
+    private var isAnimatingOut = false
 
     init(screen: NSScreen, settings: AppSettings, exitHandler: @escaping () -> Void) {
         self.settings = settings
@@ -18,10 +20,10 @@ final class OverlayWindow: NSWindow {
             defer: false
         )
 
-        title = "VibeBlank Overlay"
+        title = AppCopy.overlayWindowTitle
         level = .screenSaver
-        backgroundColor = .black
-        isOpaque = true
+        backgroundColor = .clear
+        isOpaque = false
         hasShadow = false
         animationBehavior = .none
         isReleasedWhenClosed = false
@@ -34,7 +36,27 @@ final class OverlayWindow: NSWindow {
             .stationary,
             .ignoresCycle
         ]
-        contentView = NSHostingView(rootView: OverlayContentView(settings: settings))
+
+        let hostingView = NSHostingView(rootView: OverlayContentView(settings: settings, transition: transition))
+        hostingView.wantsLayer = true
+        hostingView.layer?.backgroundColor = NSColor.clear.cgColor
+        contentView = hostingView
+    }
+
+    func startAppearing() {
+        transition.appear()
+    }
+
+    func startDisappearing(completion: @escaping () -> Void) {
+        guard !isAnimatingOut else {
+            return
+        }
+
+        isAnimatingOut = true
+        transition.disappear { [weak self] in
+            self?.isAnimatingOut = false
+            completion()
+        }
     }
 
     override var canBecomeKey: Bool { true }

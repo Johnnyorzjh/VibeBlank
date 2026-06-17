@@ -1,4 +1,5 @@
 import AppKit
+import Carbon.HIToolbox
 import VibeBlankCore
 
 @MainActor
@@ -6,13 +7,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let settingsStore = SettingsStore()
     private let overlayManager = OverlayManager()
     private let hotKeyController = HotKeyController()
+    private let escapeHotKeyController = HotKeyController(
+        keyCode: UInt32(kVK_Escape),
+        modifiers: 0,
+        id: 2
+    )
 
     private var statusItem: NSStatusItem?
     private var settingsWindowController: SettingsWindowController?
     private var hotKeyRegistrationSucceeded = true
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        ProcessInfo.processInfo.disableAutomaticTermination("VibeBlank is a resident menu bar utility.")
+        ProcessInfo.processInfo.disableAutomaticTermination(AppCopy.residentUtilityReason)
         configureStatusItem()
         configureCallbacks()
         updateHotKey()
@@ -29,19 +35,39 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func configureStatusItem() {
-        let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        item.button?.title = "VibeBlank"
-        item.button?.toolTip = "VibeBlank visual privacy"
+        let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+        if let icon = loadStatusIcon() {
+            icon.isTemplate = true
+            icon.size = NSSize(width: 18, height: 18)
+            item.button?.image = icon
+            item.button?.title = ""
+        } else {
+            item.length = NSStatusItem.variableLength
+            item.button?.title = AppCopy.appName
+        }
+        item.button?.toolTip = AppCopy.statusTooltip
         statusItem = item
+    }
+
+    private func loadStatusIcon() -> NSImage? {
+        guard let url = Bundle.main.url(forResource: "heimama-status-template", withExtension: "png") else {
+            return nil
+        }
+        return NSImage(contentsOf: url)
     }
 
     private func configureCallbacks() {
         overlayManager.onStateChange = { [weak self] in
+            self?.updateOverlayEscapeHotKey()
             self?.rebuildMenu()
         }
 
         hotKeyController.onPressed = { [weak self] in
             self?.toggleOverlay()
+        }
+
+        escapeHotKeyController.onPressed = { [weak self] in
+            self?.overlayManager.deactivate()
         }
 
         NotificationCenter.default.addObserver(
@@ -56,11 +82,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         hotKeyRegistrationSucceeded = hotKeyController.update(isEnabled: settingsStore.load().globalHotkeyEnabled)
     }
 
+    private func updateOverlayEscapeHotKey() {
+        _ = escapeHotKeyController.update(isEnabled: overlayManager.isActive)
+    }
+
     private func rebuildMenu() {
         let menu = NSMenu()
 
         let toggleItem = NSMenuItem(
-            title: overlayManager.isActive ? "Exit Black Screen" : "Activate Black Screen",
+            title: overlayManager.isActive ? AppCopy.Menu.deactivate : AppCopy.Menu.activate,
             action: #selector(toggleOverlayFromMenu),
             keyEquivalent: ""
         )
@@ -68,7 +98,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(toggleItem)
 
         let scopeItem = NSMenuItem(
-            title: "Scope: \(settingsStore.load().overlayScope.displayName)",
+            title: "\(AppCopy.Menu.scopePrefix)：\(settingsStore.load().overlayScope.displayName)",
             action: nil,
             keyEquivalent: ""
         )
@@ -77,9 +107,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let hotkeyTitle: String
         if settingsStore.load().globalHotkeyEnabled {
-            hotkeyTitle = hotKeyRegistrationSucceeded ? "Hotkey: Control-Option-Command-B" : "Hotkey: Unavailable (use menu or Esc)"
+            hotkeyTitle = hotKeyRegistrationSucceeded ? AppCopy.Menu.hotkeyAvailable : AppCopy.Menu.hotkeyUnavailable
         } else {
-            hotkeyTitle = "Hotkey: Off (Esc still exits overlays)"
+            hotkeyTitle = AppCopy.Menu.hotkeyOff
         }
 
         let hotkeyItem = NSMenuItem(
@@ -93,7 +123,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(.separator())
 
         let settingsItem = NSMenuItem(
-            title: "Settings...",
+            title: AppCopy.Menu.settings,
             action: #selector(openSettingsFromMenu),
             keyEquivalent: ","
         )
@@ -103,7 +133,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(.separator())
 
         let quitItem = NSMenuItem(
-            title: "Quit VibeBlank",
+            title: AppCopy.Menu.quit,
             action: #selector(quitFromMenu),
             keyEquivalent: "q"
         )
@@ -133,7 +163,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func quitFromMenu() {
-        overlayManager.deactivate()
+        overlayManager.forceDeactivate()
         NSApp.terminate(nil)
     }
 

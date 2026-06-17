@@ -8,8 +8,16 @@ APP_DIR="$DIST_DIR/$PRODUCT_NAME.app"
 CONTENTS_DIR="$APP_DIR/Contents"
 MACOS_DIR="$CONTENTS_DIR/MacOS"
 RESOURCES_DIR="$CONTENTS_DIR/Resources"
+ICON_NAME="heimama-icon"
+ICON_FILE="$ROOT_DIR/assets/$ICON_NAME.icns"
+STATUS_ICON_NAME="heimama-status-template.png"
+STATUS_ICON_FILE="$ROOT_DIR/assets/$STATUS_ICON_NAME"
 
 cd "$ROOT_DIR"
+
+if [[ ! -f "$ICON_FILE" || ! -f "$STATUS_ICON_FILE" ]]; then
+    bash "$ROOT_DIR/scripts/generate_icon.sh"
+fi
 
 swift build -c release --product "$PRODUCT_NAME"
 BIN_DIR="$(swift build -c release --show-bin-path)"
@@ -19,6 +27,8 @@ mkdir -p "$MACOS_DIR" "$RESOURCES_DIR"
 
 cp "$BIN_DIR/$PRODUCT_NAME" "$MACOS_DIR/$PRODUCT_NAME"
 chmod +x "$MACOS_DIR/$PRODUCT_NAME"
+cp "$ICON_FILE" "$RESOURCES_DIR/$ICON_NAME.icns"
+cp "$STATUS_ICON_FILE" "$RESOURCES_DIR/$STATUS_ICON_NAME"
 
 cat > "$CONTENTS_DIR/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
@@ -26,15 +36,19 @@ cat > "$CONTENTS_DIR/Info.plist" <<'PLIST'
 <plist version="1.0">
 <dict>
     <key>CFBundleDevelopmentRegion</key>
-    <string>en</string>
+    <string>zh_CN</string>
+    <key>CFBundleDisplayName</key>
+    <string>黑码码</string>
     <key>CFBundleExecutable</key>
     <string>VibeBlank</string>
+    <key>CFBundleIconFile</key>
+    <string>heimama-icon</string>
     <key>CFBundleIdentifier</key>
     <string>local.vibeblank.app</string>
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
     <key>CFBundleName</key>
-    <string>VibeBlank</string>
+    <string>黑码码</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
