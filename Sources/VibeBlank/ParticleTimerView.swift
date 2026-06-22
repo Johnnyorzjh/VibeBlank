@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 import VibeBlankCore
 
@@ -13,12 +14,7 @@ struct ParticleTimerView: View {
         glyphRow
             .padding(.horizontal, 18)
             .padding(.vertical, 16)
-            .background(containerFill, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .stroke(containerStroke, lineWidth: 0.8)
-            }
-            .shadow(color: shadowColor, radius: 18, x: 0, y: 8)
+            .liquidGlassSurface(cornerRadius: 18, material: hudMaterial, prominence: .hud)
             .accessibilityLabel(Text("黑屏计时 \(text)"))
             .padding(.horizontal, 44)
             .padding(.vertical, 38)
@@ -66,32 +62,12 @@ struct ParticleTimerView: View {
         }
     }
 
-    private var containerFill: Color {
+    private var hudMaterial: NSVisualEffectView.Material {
         switch backgroundStyle {
         case .whiteGlass:
-            return Color.white.opacity(0.28)
-        case .pureBlack:
-            return Color.white.opacity(0.055)
-        case .blackGlass:
-            return Color.white.opacity(0.075)
-        }
-    }
-
-    private var containerStroke: Color {
-        switch backgroundStyle {
-        case .whiteGlass:
-            return Color.black.opacity(0.12)
+            return .hudWindow
         case .pureBlack, .blackGlass:
-            return Color.white.opacity(0.14)
-        }
-    }
-
-    private var shadowColor: Color {
-        switch backgroundStyle {
-        case .whiteGlass:
-            return Color.black.opacity(0.12)
-        case .pureBlack, .blackGlass:
-            return Color.black.opacity(0.30)
+            return .fullScreenUI
         }
     }
 }

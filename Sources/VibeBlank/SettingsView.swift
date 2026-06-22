@@ -7,32 +7,28 @@ struct SettingsView: View {
     @ObservedObject var viewModel: SettingsViewModel
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var selectedPage: SettingsPage = .overlay
+    @State private var isNavigationHovered = false
 
     var body: some View {
-        ZStack {
-            SettingsBackground()
+        GeometryReader { proxy in
+            let layout = SettingsResponsiveLayout(width: proxy.size.width)
 
-            HStack(spacing: 16) {
-                sidebar
+            ZStack {
+                SettingsBackground()
 
-                VStack(spacing: 14) {
-                    header
-
-                    ScrollView {
-                        pageContent
-                            .padding(.bottom, 18)
-                    }
-                    .scrollIndicators(.hidden)
-
-                    footer
+                if layout == .compact {
+                    compactShell(layout: layout)
+                } else {
+                    sidebarShell(layout: layout)
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            .padding(16)
+            .environment(\.liquidGlassInterfaceLayout, layout.interfaceLayout)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .frame(width: 940, height: 720)
+        .frame(minWidth: 540, idealWidth: 940, minHeight: 560, idealHeight: 720)
         .tint(GlassPalette.accent)
         .animation(reduceMotion ? nil : .easeInOut(duration: 0.18), value: selectedPage)
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.18), value: isNavigationHovered)
         .animation(reduceMotion ? nil : .easeInOut(duration: 0.18), value: viewModel.settings.overlayBackgroundStyle)
         .animation(reduceMotion ? nil : .easeInOut(duration: 0.18), value: viewModel.settings.overlayContentMode)
         .animation(reduceMotion ? nil : .easeInOut(duration: 0.18), value: viewModel.settings.timerPlacement)
@@ -41,8 +37,47 @@ struct SettingsView: View {
         .animation(reduceMotion ? nil : .easeInOut(duration: 0.18), value: viewModel.settings.comboHotKeyTrigger.isEnabled)
     }
 
-    private var sidebar: some View {
-        VStack(alignment: .leading, spacing: 22) {
+    private func sidebarShell(layout: SettingsResponsiveLayout) -> some View {
+        HStack(spacing: layout.columnSpacing) {
+            sidebar(layout: layout)
+
+            VStack(spacing: 14) {
+                header(layout: layout)
+
+                ScrollView {
+                    pageContent
+                        .padding(.bottom, 18)
+                }
+                .scrollIndicators(.hidden)
+
+                footer(layout: layout)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .padding(layout.outerPadding)
+    }
+
+    private func compactShell(layout: SettingsResponsiveLayout) -> some View {
+        VStack(spacing: 12) {
+            compactNavigation
+
+            header(layout: layout)
+
+            ScrollView {
+                pageContent
+                    .padding(.bottom, 18)
+            }
+            .scrollIndicators(.hidden)
+
+            footer(layout: layout)
+        }
+        .padding(layout.outerPadding)
+    }
+
+    private func sidebar(layout: SettingsResponsiveLayout) -> some View {
+        let showsLabels = layout.showsSidebarLabels(isHovered: isNavigationHovered)
+
+        return VStack(alignment: .leading, spacing: 22) {
             HStack(spacing: 12) {
                 Image(systemName: "eye.slash")
                     .font(.system(size: 18, weight: .semibold))
@@ -50,14 +85,17 @@ struct SettingsView: View {
                     .frame(width: 36, height: 36)
                     .glassControl(cornerRadius: 12, isActive: true)
 
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(AppCopy.appName)
-                        .font(.system(size: 17, weight: .semibold))
-                        .foregroundStyle(GlassPalette.primaryText)
+                if showsLabels {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(AppCopy.appName)
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundStyle(GlassPalette.primaryText)
 
-                    Text("视觉隐私保护")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                        Text("视觉隐私保护")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .transition(.opacity.combined(with: .move(edge: .leading)))
                 }
             }
             .padding(.horizontal, 4)
@@ -67,7 +105,8 @@ struct SettingsView: View {
                 ForEach(SettingsPage.allCases) { page in
                     SidebarItem(
                         page: page,
-                        isSelected: selectedPage == page
+                        isSelected: selectedPage == page,
+                        showsLabel: showsLabels
                     ) {
                         selectedPage = page
                     }
@@ -80,33 +119,58 @@ struct SettingsView: View {
                 MiniStatusLine(
                     symbolName: "display",
                     title: viewModel.settings.overlayScope.displayName,
-                    isActive: false
+                    isActive: false,
+                    showsLabel: showsLabels
                 )
                 MiniStatusLine(
                     symbolName: viewModel.settings.modifierTapTrigger.isEnabled ? "command" : "command.circle",
                     title: primaryTriggerSummary,
-                    isActive: viewModel.settings.modifierTapTrigger.isEnabled && primaryTriggerTone == .active
+                    isActive: viewModel.settings.modifierTapTrigger.isEnabled && primaryTriggerTone == .active,
+                    showsLabel: showsLabels
                 )
                 MiniStatusLine(
                     symbolName: viewModel.settings.launchAtLoginEnabled ? "power.circle.fill" : "power.circle",
                     title: loginSummary,
-                    isActive: viewModel.settings.launchAtLoginEnabled
+                    isActive: viewModel.settings.launchAtLoginEnabled,
+                    showsLabel: showsLabels
                 )
             }
             .padding(.horizontal, 4)
         }
         .padding(.top, 54)
-        .padding(.horizontal, 14)
+        .padding(.horizontal, layout == .rail ? 12 : 14)
         .padding(.bottom, 18)
-        .frame(width: 210)
-        .brightGlass(cornerRadius: 28, material: .sidebar, prominence: .sidebar)
+        .frame(width: layout.navigationWidth(isHovered: isNavigationHovered), alignment: .leading)
+        .brightGlass(cornerRadius: 28, material: .sidebar, prominence: layout == .rail ? .rail : .sidebar)
+        .clipped()
+        .onHover { isNavigationHovered = layout == .rail && $0 }
     }
 
-    private var header: some View {
-        HStack(spacing: 18) {
+    private var compactNavigation: some View {
+        ScrollView(.horizontal) {
+            HStack(spacing: 6) {
+                ForEach(SettingsPage.allCases) { page in
+                    CompactNavItem(
+                        page: page,
+                        isSelected: selectedPage == page
+                    ) {
+                        selectedPage = page
+                    }
+                }
+            }
+            .padding(6)
+        }
+        .scrollIndicators(.hidden)
+        .brightGlass(cornerRadius: 22, material: .headerView, prominence: .header)
+    }
+
+    private func header(layout: SettingsResponsiveLayout) -> some View {
+        let isCompact = layout == .compact
+
+        return VStack(alignment: .leading, spacing: isCompact ? 12 : 0) {
             VStack(alignment: .leading, spacing: 5) {
                 Text(selectedPage.title)
-                    .font(.system(size: 28, weight: .semibold, design: .rounded))
+                    .font(.system(size: isCompact ? 24 : 28, weight: .semibold, design: .rounded))
                     .foregroundStyle(GlassPalette.primaryText)
 
                 Text(selectedPage.subtitle)
@@ -114,8 +178,26 @@ struct SettingsView: View {
                     .foregroundStyle(.secondary)
             }
 
-            Spacer(minLength: 16)
+            if isCompact {
+                ScrollView(.horizontal) {
+                    headerStats
+                }
+                .scrollIndicators(.hidden)
+            } else {
+                HStack(spacing: 18) {
+                    Spacer(minLength: 16)
+                    headerStats
+                }
+            }
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 16)
+        .brightGlass(cornerRadius: 24, material: .headerView, prominence: .header)
+        .accessibilityElement(children: .combine)
+    }
 
+    private var headerStats: some View {
+        HStack(spacing: 14) {
             HeaderStat(
                 symbolName: "rectangle.on.rectangle",
                 title: "范围",
@@ -135,10 +217,6 @@ struct SettingsView: View {
                 tone: viewModel.settings.launchAtLoginEnabled ? .active : .muted
             )
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 16)
-        .brightGlass(cornerRadius: 24, material: .headerView, prominence: .header)
-        .accessibilityElement(children: .combine)
     }
 
     @ViewBuilder
@@ -464,21 +542,40 @@ struct SettingsView: View {
         }
     }
 
-    private var footer: some View {
-        HStack(spacing: 12) {
-            Button {
-                viewModel.resetToDefaults()
-            } label: {
-                Label(AppCopy.Settings.restoreDefaults, systemImage: "arrow.counterclockwise")
+    private func footer(layout: SettingsResponsiveLayout) -> some View {
+        Group {
+            if layout == .compact {
+                VStack(alignment: .leading, spacing: 9) {
+                    Button {
+                        viewModel.resetToDefaults()
+                    } label: {
+                        Label(AppCopy.Settings.restoreDefaults, systemImage: "arrow.counterclockwise")
+                    }
+                    .buttonStyle(.bordered)
+
+                    Text("菜单栏和 Esc 始终保留为安全兜底。")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                HStack(spacing: 12) {
+                    Button {
+                        viewModel.resetToDefaults()
+                    } label: {
+                        Label(AppCopy.Settings.restoreDefaults, systemImage: "arrow.counterclockwise")
+                    }
+                    .buttonStyle(.bordered)
+
+                    Spacer()
+
+                    Text("菜单栏和 Esc 始终保留为安全兜底。")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
             }
-            .buttonStyle(.bordered)
-
-            Spacer()
-
-            Text("菜单栏和 Esc 始终保留为安全兜底。")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 11)
@@ -582,6 +679,70 @@ private enum SettingsPage: String, CaseIterable, Identifiable {
     }
 }
 
+private enum SettingsResponsiveLayout: Equatable {
+    case regular
+    case rail
+    case compact
+
+    init(width: CGFloat) {
+        if width < 620 {
+            self = .compact
+        } else if width < 760 {
+            self = .rail
+        } else {
+            self = .regular
+        }
+    }
+
+    var interfaceLayout: LiquidGlassInterfaceLayout {
+        switch self {
+        case .regular:
+            return .regular
+        case .rail:
+            return .rail
+        case .compact:
+            return .compact
+        }
+    }
+
+    var outerPadding: EdgeInsets {
+        switch self {
+        case .regular:
+            return EdgeInsets(top: 16, leading: 16, bottom: 16, trailing: 16)
+        case .rail:
+            return EdgeInsets(top: 14, leading: 14, bottom: 14, trailing: 14)
+        case .compact:
+            return EdgeInsets(top: 12, leading: 12, bottom: 12, trailing: 12)
+        }
+    }
+
+    var columnSpacing: CGFloat {
+        self == .rail ? 12 : 16
+    }
+
+    func navigationWidth(isHovered: Bool) -> CGFloat {
+        switch self {
+        case .regular:
+            return 210
+        case .rail:
+            return isHovered ? 210 : 76
+        case .compact:
+            return 0
+        }
+    }
+
+    func showsSidebarLabels(isHovered: Bool) -> Bool {
+        switch self {
+        case .regular:
+            return true
+        case .rail:
+            return isHovered
+        case .compact:
+            return false
+        }
+    }
+}
+
 private struct SettingsBackground: View {
     @Environment(\.colorScheme) private var colorScheme
 
@@ -612,87 +773,34 @@ private struct SettingsBackground: View {
     }
 }
 
-private enum GlassPalette {
-    static let accent = Color(nsColor: .systemBlue)
-    static let primaryText = Color(nsColor: .labelColor)
-    static let secondaryText = Color(nsColor: .secondaryLabelColor)
-
-    static func surfaceTint(_ colorScheme: ColorScheme, prominence: GlassProminence) -> Color {
-        switch (colorScheme, prominence) {
-        case (.dark, .sidebar):
-            return Color.white.opacity(0.038)
-        case (.dark, .header):
-            return Color.white.opacity(0.034)
-        case (.dark, .card):
-            return Color.white.opacity(0.030)
-        case (.dark, .control):
-            return Color.white.opacity(0.052)
-        case (.dark, .footer):
-            return Color.white.opacity(0.032)
-        case (_, .sidebar):
-            return Color.white.opacity(0.045)
-        case (_, .header):
-            return Color.white.opacity(0.052)
-        case (_, .card):
-            return Color.white.opacity(0.042)
-        case (_, .control):
-            return Color.black.opacity(0.032)
-        case (_, .footer):
-            return Color.white.opacity(0.045)
-        }
-    }
-
-    static func border(_ colorScheme: ColorScheme) -> Color {
-        colorScheme == .dark
-            ? Color.white.opacity(0.13)
-            : Color.white.opacity(0.34)
-    }
-
-    static func hairline(_ colorScheme: ColorScheme) -> Color {
-        colorScheme == .dark
-            ? Color.white.opacity(0.080)
-            : Color.black.opacity(0.050)
-    }
-
-    static func materialOpacity(_ colorScheme: ColorScheme, prominence: GlassProminence) -> Double {
-        switch (colorScheme, prominence) {
-        case (.dark, .control):
-            return 0.82
-        case (.dark, _):
-            return 0.76
-        case (_, .control):
-            return 0.84
-        case (_, .header), (_, .sidebar):
-            return 0.78
-        case (_, .card), (_, .footer):
-            return 0.70
-        }
-    }
-}
-
 private struct SidebarItem: View {
     let page: SettingsPage
     let isSelected: Bool
+    let showsLabel: Bool
     let action: () -> Void
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 12) {
+            HStack(spacing: showsLabel ? 12 : 0) {
                 Image(systemName: page.symbolName)
                     .font(.system(size: 17, weight: .semibold))
                     .symbolRenderingMode(.hierarchical)
                     .foregroundStyle(isSelected ? GlassPalette.accent : .secondary)
                     .frame(width: 32, height: 32)
 
-                Text(page.title)
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(isSelected ? GlassPalette.primaryText : .primary)
+                if showsLabel {
+                    Text(page.title)
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(isSelected ? GlassPalette.primaryText : .primary)
+                        .transition(.opacity.combined(with: .move(edge: .leading)))
 
-                Spacer()
+                    Spacer()
+                }
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 9)
+            .frame(maxWidth: .infinity, alignment: showsLabel ? .leading : .center)
             .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
             .background {
                 if isSelected {
@@ -708,6 +816,41 @@ private struct SidebarItem: View {
             }
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(page.title)
+    }
+}
+
+private struct CompactNavItem: View {
+    let page: SettingsPage
+    let isSelected: Bool
+    let action: () -> Void
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        Button(action: action) {
+            Label(page.title, systemImage: page.symbolName)
+                .font(.system(size: 13, weight: .semibold))
+                .labelStyle(.titleAndIcon)
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(isSelected ? GlassPalette.primaryText : .secondary)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 9)
+                .background {
+                    Capsule()
+                        .fill(isSelected ? selectedFill : Color.clear)
+                }
+                .overlay {
+                    Capsule()
+                        .stroke(isSelected ? GlassPalette.border(colorScheme).opacity(0.72) : Color.clear, lineWidth: 0.7)
+                }
+                .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(page.title)
+    }
+
+    private var selectedFill: Color {
+        colorScheme == .dark ? Color.white.opacity(0.075) : Color.white.opacity(0.26)
     }
 }
 
@@ -715,21 +858,27 @@ private struct MiniStatusLine: View {
     let symbolName: String
     let title: String
     let isActive: Bool
+    let showsLabel: Bool
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: showsLabel ? 8 : 0) {
             Image(systemName: symbolName)
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(isActive ? GlassPalette.accent : .secondary)
                 .frame(width: 22, height: 22)
                 .glassControl(cornerRadius: 8, isActive: isActive)
 
-            Text(title)
-                .font(.caption.weight(.medium))
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.78)
+            if showsLabel {
+                Text(title)
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.78)
+                    .transition(.opacity.combined(with: .move(edge: .leading)))
+            }
         }
+        .frame(maxWidth: .infinity, alignment: showsLabel ? .leading : .center)
+        .accessibilityLabel(title)
     }
 }
 
@@ -827,8 +976,7 @@ private struct SettingsRow<Accessory: View, Footer: View>: View {
     @ViewBuilder let accessory: Accessory
     @ViewBuilder let footer: Footer
 
-    @State private var isHovered = false
-    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.liquidGlassInterfaceLayout) private var layout
 
     init(
         symbolName: String,
@@ -866,31 +1014,22 @@ private struct SettingsRow<Accessory: View, Footer: View>: View {
     }
 
     var body: some View {
+        Group {
+            if layout.isCompact {
+                compactBody
+            } else {
+                regularBody
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 11)
+        .glassHoverExpansion(cornerRadius: 16)
+    }
+
+    private var regularBody: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .center, spacing: 12) {
-                Image(systemName: symbolName)
-                    .font(.system(size: 15, weight: .semibold))
-                    .symbolRenderingMode(.hierarchical)
-                    .foregroundStyle(isActive ? GlassPalette.accent : .secondary)
-                    .frame(width: 32, height: 32)
-                    .glassControl(cornerRadius: 10, isActive: isActive)
-
-                VStack(alignment: .leading, spacing: 5) {
-                    HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        Text(title)
-                            .font(.body.weight(.semibold))
-                            .foregroundStyle(GlassPalette.primaryText)
-
-                        if let status {
-                            status
-                        }
-                    }
-
-                    Text(detail)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
+                rowLead
 
                 Spacer(minLength: 16)
 
@@ -902,20 +1041,48 @@ private struct SettingsRow<Accessory: View, Footer: View>: View {
             footer
                 .padding(.leading, 44)
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 11)
-        .background {
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(isHovered ? hoverFill : Color.clear)
-        }
-        .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .onHover { isHovered = $0 }
     }
 
-    private var hoverFill: Color {
-        colorScheme == .dark
-            ? Color.white.opacity(0.040)
-            : Color.white.opacity(0.16)
+    private var compactBody: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            rowLead
+
+            accessory
+                .controlSize(.regular)
+                .frame(maxWidth: .infinity, alignment: .trailing)
+
+            footer
+        }
+    }
+
+    private var rowLead: some View {
+        HStack(alignment: .center, spacing: 12) {
+            Image(systemName: symbolName)
+                .font(.system(size: 15, weight: .semibold))
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(isActive ? GlassPalette.accent : .secondary)
+                .frame(width: 32, height: 32)
+                .glassControl(cornerRadius: 10, isActive: isActive)
+
+            VStack(alignment: .leading, spacing: 5) {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(title)
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(GlassPalette.primaryText)
+
+                    if let status {
+                        status
+                    }
+                }
+
+                Text(detail)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer(minLength: 0)
+        }
     }
 }
 
@@ -1072,117 +1239,6 @@ private struct InlineActionNotice: View {
                 .buttonStyle(.bordered)
                 .controlSize(.small)
         }
-    }
-}
-
-private extension View {
-    func brightGlass(
-        cornerRadius: CGFloat,
-        material: NSVisualEffectView.Material,
-        prominence: GlassProminence
-    ) -> some View {
-        modifier(GlassSurfaceModifier(cornerRadius: cornerRadius, material: material, prominence: prominence))
-    }
-
-    func glassControl(cornerRadius: CGFloat, isActive: Bool) -> some View {
-        modifier(GlassControlModifier(cornerRadius: cornerRadius, isActive: isActive))
-    }
-}
-
-private enum GlassProminence {
-    case sidebar
-    case header
-    case card
-    case control
-    case footer
-}
-
-private struct GlassSurfaceModifier: ViewModifier {
-    let cornerRadius: CGFloat
-    let material: NSVisualEffectView.Material
-    let prominence: GlassProminence
-    @Environment(\.colorScheme) private var colorScheme
-
-    func body(content: Content) -> some View {
-        let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-
-        content
-            .background {
-                NativeGlassSurface(material: material, blendingMode: .behindWindow)
-                    .clipShape(shape)
-                    .opacity(GlassPalette.materialOpacity(colorScheme, prominence: prominence))
-            }
-            .background {
-                shape.fill(GlassPalette.surfaceTint(colorScheme, prominence: prominence))
-            }
-            .overlay {
-                shape.stroke(GlassPalette.border(colorScheme), lineWidth: prominence == .control ? 0.55 : 0.8)
-            }
-            .overlay(alignment: .topLeading) {
-                shape
-                    .stroke(Color.white.opacity(colorScheme == .dark ? 0.075 : 0.20), lineWidth: 0.45)
-                    .padding(0.5)
-            }
-            .shadow(color: shadowColor, radius: shadowRadius, x: 0, y: shadowY)
-    }
-
-    private var shadowColor: Color {
-        Color.black.opacity(colorScheme == .dark ? 0.16 : 0.060)
-    }
-
-    private var shadowRadius: CGFloat {
-        switch prominence {
-        case .sidebar:
-            return 28
-        case .header:
-            return 22
-        case .card:
-            return 24
-        case .control:
-            return 10
-        case .footer:
-            return 18
-        }
-    }
-
-    private var shadowY: CGFloat {
-        switch prominence {
-        case .sidebar:
-            return 12
-        case .header:
-            return 7
-        case .card:
-            return 8
-        case .control:
-            return 3
-        case .footer:
-            return 6
-        }
-    }
-}
-
-private struct GlassControlModifier: ViewModifier {
-    let cornerRadius: CGFloat
-    let isActive: Bool
-    @Environment(\.colorScheme) private var colorScheme
-
-    func body(content: Content) -> some View {
-        let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-
-        content
-            .background {
-                shape.fill(fill)
-            }
-            .overlay {
-                shape.stroke(GlassPalette.hairline(colorScheme), lineWidth: 0.6)
-            }
-    }
-
-    private var fill: Color {
-        if isActive {
-            return GlassPalette.accent.opacity(colorScheme == .dark ? 0.15 : 0.12)
-        }
-        return colorScheme == .dark ? Color.white.opacity(0.052) : Color.black.opacity(0.040)
     }
 }
 

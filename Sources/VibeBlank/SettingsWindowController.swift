@@ -25,7 +25,7 @@ final class SettingsWindowController {
 
         window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 940, height: 720),
-            styleMask: [.titled, .closable, .miniaturizable, .fullSizeContentView],
+            styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
             backing: .buffered,
             defer: false
         )
@@ -36,7 +36,7 @@ final class SettingsWindowController {
         window.isOpaque = false
         window.isMovableByWindowBackground = true
         window.hasShadow = true
-        window.minSize = NSSize(width: 860, height: 640)
+        window.minSize = NSSize(width: 540, height: 560)
         window.contentView = glassView
         NSLayoutConstraint.activate([
             hostingView.leadingAnchor.constraint(equalTo: glassView.leadingAnchor),

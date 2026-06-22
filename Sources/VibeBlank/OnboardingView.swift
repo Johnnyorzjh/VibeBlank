@@ -7,13 +7,42 @@ struct OnboardingView: View {
     let start: () -> Void
 
     var body: some View {
-        ZStack {
-            NativeGlassSurface(material: .underPageBackground, blendingMode: .behindWindow, isEmphasized: false)
-                .ignoresSafeArea()
-            Color(nsColor: .windowBackgroundColor)
-                .opacity(0.72)
-                .ignoresSafeArea()
+        GeometryReader { proxy in
+            let isCompact = proxy.size.width < 880
 
+            ZStack {
+                OnboardingGlassBackground()
+
+                VStack(spacing: 0) {
+                    ScrollView {
+                        content(isCompact: isCompact)
+                            .padding(.horizontal, isCompact ? 22 : 44)
+                            .padding(.top, isCompact ? 26 : 40)
+                            .padding(.bottom, 24)
+                    }
+                    .scrollIndicators(.hidden)
+
+                    footer(isCompact: isCompact)
+                        .padding(.horizontal, isCompact ? 22 : 44)
+                        .padding(.bottom, isCompact ? 20 : 28)
+                }
+            }
+        }
+        .foregroundStyle(.primary)
+    }
+
+    @ViewBuilder
+    private func content(isCompact: Bool) -> some View {
+        if isCompact {
+            VStack(alignment: .leading, spacing: 22) {
+                copyColumn
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                guideImage
+                    .aspectRatio(16.0 / 10.0, contentMode: .fit)
+                    .frame(maxWidth: .infinity)
+            }
+        } else {
             HStack(alignment: .center, spacing: 32) {
                 copyColumn
                     .frame(width: 342, alignment: .leading)
@@ -22,11 +51,7 @@ struct OnboardingView: View {
                     .aspectRatio(16.0 / 10.0, contentMode: .fit)
                     .frame(maxWidth: .infinity)
             }
-            .padding(.horizontal, 44)
-            .padding(.top, 40)
-            .padding(.bottom, 32)
         }
-        .foregroundStyle(.primary)
     }
 
     private var copyColumn: some View {
@@ -67,27 +92,49 @@ struct OnboardingView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
 
             loginItemCard
+        }
+    }
 
-            Spacer(minLength: 0)
-
-            HStack(spacing: 10) {
-                if loginItemStatus == .requiresApproval {
-                    Button(AppCopy.Onboarding.openLoginItems) {
-                        openLoginItemsSettings()
+    private func footer(isCompact: Bool) -> some View {
+        Group {
+            if isCompact {
+                VStack(alignment: .leading, spacing: 10) {
+                    if loginItemStatus == .requiresApproval {
+                        Button(AppCopy.Onboarding.openLoginItems) {
+                            openLoginItemsSettings()
+                        }
+                        .buttonStyle(.bordered)
                     }
-                    .buttonStyle(.bordered)
-                }
 
-                Spacer(minLength: 0)
-
-                Button(AppCopy.Onboarding.start) {
-                    start()
+                    Button(AppCopy.Onboarding.start) {
+                        start()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                    .keyboardShortcut(.defaultAction)
                 }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-                .keyboardShortcut(.defaultAction)
+            } else {
+                HStack(spacing: 10) {
+                    if loginItemStatus == .requiresApproval {
+                        Button(AppCopy.Onboarding.openLoginItems) {
+                            openLoginItemsSettings()
+                        }
+                        .buttonStyle(.bordered)
+                    }
+
+                    Spacer(minLength: 0)
+
+                    Button(AppCopy.Onboarding.start) {
+                        start()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                    .keyboardShortcut(.defaultAction)
+                }
             }
         }
+        .padding(12)
+        .liquidGlassSurface(cornerRadius: 20, material: .popover, prominence: .footer)
     }
 
     private var loginItemCard: some View {
@@ -114,10 +161,7 @@ struct OnboardingView: View {
             Spacer(minLength: 0)
         }
         .padding(12)
-        .background(
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(Color.primary.opacity(0.055))
-        )
+        .liquidGlassSurface(cornerRadius: 16, material: .popover, prominence: .onboarding)
     }
 
     private var guideImage: some View {
@@ -172,6 +216,33 @@ struct OnboardingView: View {
             return nil
         }
         return NSImage(contentsOf: url)
+    }
+}
+
+private struct OnboardingGlassBackground: View {
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+
+    var body: some View {
+        ZStack {
+            NativeGlassSurface(material: .underPageBackground, blendingMode: .behindWindow, isEmphasized: false)
+
+            LinearGradient(
+                colors: [
+                    Color.white.opacity(colorScheme == .dark ? 0.018 : 0.050),
+                    LiquidGlassPalette.accent.opacity(colorScheme == .dark ? 0.010 : 0.020),
+                    Color.clear
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+
+            if reduceTransparency {
+                Color(nsColor: .windowBackgroundColor)
+                    .opacity(0.88)
+            }
+        }
+        .ignoresSafeArea()
     }
 }
 

@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 import VibeBlankCore
 
@@ -39,6 +40,9 @@ struct OverlayContentView: View {
                     .multilineTextAlignment(.center)
                     .lineLimit(3)
                     .minimumScaleFactor(0.6)
+                    .padding(.horizontal, 30)
+                    .padding(.vertical, 20)
+                    .liquidGlassSurface(cornerRadius: 22, material: centeredTextMaterial, prominence: .hud)
                     .padding(48)
                     .opacity(transition.phase == .visible ? 1 : 0)
             }
@@ -75,6 +79,15 @@ struct OverlayContentView: View {
             return Color.black.opacity(0.68)
         case .pureBlack, .blackGlass:
             return Color.white.opacity(0.72)
+        }
+    }
+
+    private var centeredTextMaterial: NSVisualEffectView.Material {
+        switch settings.overlayBackgroundStyle {
+        case .whiteGlass:
+            return .hudWindow
+        case .pureBlack, .blackGlass:
+            return .fullScreenUI
         }
     }
 }

@@ -14,13 +14,11 @@ struct StatusPanelView: View {
 
     var body: some View {
         ZStack(alignment: .top) {
-            NativeGlassSurface(material: .popover, blendingMode: .behindWindow)
-
             LinearGradient(
                 colors: [
-                    Color.white.opacity(0.060),
+                    Color.white.opacity(0.055),
                     Color.clear,
-                    PanelPalette.accent.opacity(0.026)
+                    PanelPalette.accent.opacity(0.030)
                 ],
                 startPoint: .topLeading,
                 endPoint: .bottom
@@ -98,17 +96,13 @@ struct StatusPanelView: View {
                 }
                 .padding(.horizontal, 14)
                 .padding(.vertical, 10)
-                .background(Color.white.opacity(0.14), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .liquidGlassSurface(cornerRadius: 16, material: .popover, prominence: .menuItem)
             }
             .padding(14)
         }
         .frame(width: 360, height: 610, alignment: .top)
         .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .stroke(Color.white.opacity(0.34), lineWidth: 0.8)
-        }
-        .shadow(color: Color.black.opacity(0.12), radius: 24, x: 0, y: 10)
+        .liquidGlassSurface(cornerRadius: 28, material: .popover, prominence: .menu)
         .tint(PanelPalette.accent)
     }
 
@@ -144,11 +138,7 @@ struct StatusPanelView: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
-        .background(Color.white.opacity(0.22), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .stroke(Color.white.opacity(0.38), lineWidth: 0.7)
-        }
+        .liquidGlassSurface(cornerRadius: 20, material: .headerView, prominence: .header)
     }
 
     private var primaryTriggerText: String {
@@ -197,11 +187,7 @@ private struct PanelSection<Content: View>: View {
             content
         }
         .padding(10)
-        .background(Color.white.opacity(0.14), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .stroke(Color.white.opacity(0.30), lineWidth: 0.7)
-        }
+        .liquidGlassSurface(cornerRadius: 20, material: .popover, prominence: .menuItem)
     }
 }
 
@@ -276,6 +262,7 @@ private struct PanelActionRow: View {
                     .fill(PanelPalette.accent.opacity(0.10))
             }
         }
+        .glassHoverExpansion(cornerRadius: 14, isProminent: isPrimary)
     }
 }
 

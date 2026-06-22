@@ -19,7 +19,7 @@ final class OnboardingWindowController {
 
         window = NSPanel(
             contentRect: NSRect(x: 0, y: 0, width: 1180, height: 560),
-            styleMask: [.titled, .closable, .miniaturizable, .fullSizeContentView],
+            styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
             backing: .buffered,
             defer: false
         )
@@ -34,7 +34,7 @@ final class OnboardingWindowController {
         window.hidesOnDeactivate = false
         window.level = .screenSaver
         window.collectionBehavior = [.canJoinAllSpaces]
-        window.minSize = NSSize(width: 1040, height: 540)
+        window.minSize = NSSize(width: 560, height: 600)
         window.isReleasedWhenClosed = false
         window.center()
         updateContent()
