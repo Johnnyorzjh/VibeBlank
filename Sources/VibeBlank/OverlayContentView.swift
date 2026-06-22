@@ -14,10 +14,28 @@ struct OverlayContentView: View {
         ZStack {
             OverlayBackgroundView(style: settings.overlayBackgroundStyle, transition: transition)
 
+            overlayContent
+        }
+        .onReceive(timer) { value in
+            now = value
+        }
+    }
+
+    @ViewBuilder
+    private var overlayContent: some View {
+        switch settings.overlayContentMode {
+        case .particleTimer:
+            ParticleTimerView(
+                text: ElapsedTimerFormatter.string(elapsedSeconds: elapsedSeconds),
+                placement: settings.timerPlacement,
+                backgroundStyle: settings.overlayBackgroundStyle
+            )
+            .opacity(transition.phase == .visible ? 1 : 0)
+        case .blank, .time, .statusText, .customText:
             if let text = overlayText {
                 Text(text)
                     .font(.system(size: 22, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.72))
+                    .foregroundStyle(centeredTextColor)
                     .multilineTextAlignment(.center)
                     .lineLimit(3)
                     .minimumScaleFactor(0.6)
@@ -25,14 +43,11 @@ struct OverlayContentView: View {
                     .opacity(transition.phase == .visible ? 1 : 0)
             }
         }
-        .onReceive(timer) { value in
-            now = value
-        }
     }
 
     private var overlayText: String? {
         switch settings.overlayContentMode {
-        case .blank:
+        case .blank, .particleTimer:
             return nil
         case .time:
             return formattedTime
@@ -40,8 +55,6 @@ struct OverlayContentView: View {
             return "黑码码已开启"
         case .customText:
             return settings.sanitizedCustomText
-        case .particleTimer:
-            return ElapsedTimerFormatter.string(elapsedSeconds: elapsedSeconds)
         }
     }
 
@@ -54,5 +67,14 @@ struct OverlayContentView: View {
         formatter.timeStyle = .short
         formatter.dateStyle = .none
         return formatter.string(from: now)
+    }
+
+    private var centeredTextColor: Color {
+        switch settings.overlayBackgroundStyle {
+        case .whiteGlass:
+            return Color.black.opacity(0.68)
+        case .pureBlack, .blackGlass:
+            return Color.white.opacity(0.72)
+        }
     }
 }
