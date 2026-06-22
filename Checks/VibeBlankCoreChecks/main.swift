@@ -279,6 +279,34 @@ private func checkHotCornerCooldownRequiresLeavingActivationZone() throws {
     try expect(secondTrigger == true, "push after leaving activation zone and cooldown should trigger")
 }
 
+private func checkSystemSessionActivationGate() throws {
+    let start = Date(timeIntervalSinceReferenceDate: 100)
+    var gate = SystemSessionActivationGate()
+
+    try expect(gate.allowsActivation(at: start) == true, "activation should be allowed by default")
+    try expect(gate.allowsDeactivation == true, "deactivation should always be allowed")
+
+    gate.markProtectedSessionStarted()
+    try expect(gate.isProtectedSessionActive == true, "protected session should be tracked")
+    try expect(gate.cooldownEndsAt == nil, "protected start should clear cooldown")
+    try expect(gate.allowsActivation(at: start) == false, "activation should be blocked while protected")
+    try expect(gate.allowsDeactivation == true, "deactivation should still be allowed while protected")
+
+    gate.markProtectedSessionEnded(at: start, cooldown: 1.5)
+    try expect(gate.isProtectedSessionActive == false, "protected session should end")
+    try expect(
+        gate.allowsActivation(at: start.addingTimeInterval(1.49)) == false,
+        "activation should be blocked during return cooldown"
+    )
+    try expect(
+        gate.allowsActivation(at: start.addingTimeInterval(1.5)) == true,
+        "activation should resume after cooldown"
+    )
+
+    gate.markProtectedSessionStarted()
+    try expect(gate.cooldownEndsAt == nil, "new protected start should invalidate pending cooldown")
+}
+
 private func checkFirstLaunchFlagPersists() throws {
     let context = makeStore()
     defer { context.defaults.removePersistentDomain(forName: context.suiteName) }
@@ -298,6 +326,7 @@ let checks: [(String, () throws -> Void)] = [
     ("hot corner edge slides do not trigger", checkHotCornerEdgeSlidesDoNotTrigger),
     ("hot corner screen seam does not trigger", checkHotCornerScreenSeamDoesNotTrigger),
     ("hot corner cooldown requires leaving activation zone", checkHotCornerCooldownRequiresLeavingActivationZone),
+    ("system session activation gate", checkSystemSessionActivationGate),
     ("first launch flag persists", checkFirstLaunchFlagPersists)
 ]
 
