@@ -10,6 +10,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let modifierTapTriggerController = ModifierTapTriggerController()
     private let hotCornerTriggerController = HotCornerTriggerController()
     private let loginItemController = LoginItemController()
+    private let systemSessionGuard = SystemSessionGuard()
     private let escapeHotKeyController = HotKeyController(
         keyCode: UInt32(kVK_Escape),
         modifiers: 0,
@@ -82,6 +83,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         escapeHotKeyController.onPressed = { [weak self] in
             self?.overlayManager.deactivate()
+        }
+
+        systemSessionGuard.onProtectedSessionStarted = { [weak self] in
+            self?.overlayManager.forceDeactivate()
         }
 
         NotificationCenter.default.addObserver(
@@ -204,11 +209,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func toggleOverlay() {
-        overlayManager.toggle(settings: settingsStore.load())
+        if overlayManager.isActive {
+            overlayManager.deactivate()
+            return
+        }
+
+        guard systemSessionGuard.canActivateOverlay else {
+            return
+        }
+
+        overlayManager.activate(settings: settingsStore.load())
     }
 
     private func activateOverlayIfNeeded() {
         guard !overlayManager.isActive else {
+            return
+        }
+        guard systemSessionGuard.canActivateOverlay else {
             return
         }
         overlayManager.activate(settings: settingsStore.load())
@@ -235,7 +252,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         syncTriggers()
         rebuildMenu()
 
-        if overlayManager.isActive {
+        if overlayManager.isActive, systemSessionGuard.canActivateOverlay {
             overlayManager.activate(settings: settingsStore.load())
         }
     }
