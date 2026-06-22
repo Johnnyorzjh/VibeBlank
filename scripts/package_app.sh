@@ -17,6 +17,8 @@ ICON_NAME="heimama-icon"
 ICON_FILE="$ROOT_DIR/assets/$ICON_NAME.icns"
 STATUS_ICON_NAME="heimama-status-template.png"
 STATUS_ICON_FILE="$ROOT_DIR/assets/$STATUS_ICON_NAME"
+ONBOARDING_GUIDE_NAME="onboarding-guide.png"
+ONBOARDING_GUIDE_FILE="$ROOT_DIR/assets/$ONBOARDING_GUIDE_NAME"
 DMG_BACKGROUND_NAME="dmg-background.png"
 DMG_BACKGROUND_FILE="$ROOT_DIR/assets/$DMG_BACKGROUND_NAME"
 DMG_WINDOW_WIDTH=1180
@@ -42,8 +44,8 @@ if [[ ! -f "$ICON_FILE" || ! -f "$STATUS_ICON_FILE" ]]; then
     bash "$ROOT_DIR/scripts/generate_icon.sh"
 fi
 
-if [[ ! -f "$DMG_BACKGROUND_FILE" ]]; then
-    echo "Missing DMG background: $DMG_BACKGROUND_FILE" >&2
+if [[ ! -f "$DMG_BACKGROUND_FILE" || ! -f "$ONBOARDING_GUIDE_FILE" ]]; then
+    echo "Missing packaging asset. Expected $DMG_BACKGROUND_FILE and $ONBOARDING_GUIDE_FILE" >&2
     exit 1
 fi
 
@@ -57,6 +59,7 @@ cp "$BIN_DIR/$PRODUCT_NAME" "$MACOS_DIR/$PRODUCT_NAME"
 chmod +x "$MACOS_DIR/$PRODUCT_NAME"
 cp "$ICON_FILE" "$RESOURCES_DIR/$ICON_NAME.icns"
 cp "$STATUS_ICON_FILE" "$RESOURCES_DIR/$STATUS_ICON_NAME"
+cp "$ONBOARDING_GUIDE_FILE" "$RESOURCES_DIR/$ONBOARDING_GUIDE_NAME"
 
 cat > "$CONTENTS_DIR/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
@@ -80,9 +83,9 @@ cat > "$CONTENTS_DIR/Info.plist" <<'PLIST'
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
-    <string>0.3.0</string>
+    <string>0.4.0</string>
     <key>CFBundleVersion</key>
-    <string>3</string>
+    <string>4</string>
     <key>LSMinimumSystemVersion</key>
     <string>13.0</string>
     <key>LSUIElement</key>

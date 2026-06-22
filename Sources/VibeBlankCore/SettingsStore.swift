@@ -4,6 +4,7 @@ public final class SettingsStore {
     private enum Keys {
         static let settings = "settings"
         static let hasCompletedFirstLaunch = "hasCompletedFirstLaunch"
+        static let hasCompletedOnboarding = "hasCompletedOnboarding"
     }
 
     private let defaults: UserDefaults
@@ -41,8 +42,17 @@ public final class SettingsStore {
         defaults.set(true, forKey: Keys.hasCompletedFirstLaunch)
     }
 
+    public var hasCompletedOnboarding: Bool {
+        defaults.bool(forKey: Keys.hasCompletedOnboarding)
+    }
+
+    public func markOnboardingCompleted() {
+        defaults.set(true, forKey: Keys.hasCompletedOnboarding)
+    }
+
     public func resetForTests() {
         defaults.removeObject(forKey: Keys.settings)
         defaults.removeObject(forKey: Keys.hasCompletedFirstLaunch)
+        defaults.removeObject(forKey: Keys.hasCompletedOnboarding)
     }
 }

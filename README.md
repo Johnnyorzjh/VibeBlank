@@ -27,6 +27,7 @@
 
 | 功能 | 说明 |
 | --- | --- |
+| 新用户 landing | DMG 中提供三步安装指引，首次启动展示图文 onboarding |
 | 遮住外接屏 | 默认只覆盖外接显示器，适合短暂离开座位 |
 | 遮住所有屏幕 | 在更敏感的场景下覆盖所有显示器 |
 | 拦截输入 | 遮罩窗口消费鼠标和键盘事件，避免误点到底层应用 |
@@ -53,8 +54,8 @@
 
 ## 使用方式
 
-1. 打开 `dist/VibeBlank.app`。
-2. 第一次启动时查看「黑码码设置」。
+1. 打开 `VibeBlank.dmg`，把「黑码码.app」拖进 Applications。
+2. 从「应用程序」里第一次打开黑码码，查看新用户引导。
 3. 从菜单栏点击小黑马图标，选择「开启黑屏」。
 4. 默认连续按三次 Command 可开启或退出黑屏。
 5. 如需鼠标触发，在设置里打开「触发角开启黑屏」并选择角落。
@@ -62,6 +63,10 @@
 7. 如需更强视觉质感，在设置里选择「白色毛玻璃」或「黑色强毛玻璃」。
 8. 如需查看离开时长，在「显示内容」里选择「粒子计时」，并选择计时器角落。
 9. 使用菜单栏、Command 三连、组合键、Esc、点击或按键退出。
+
+## V4 重点
+
+V4 主要解决新用户 landing 和第一次启动动线：DMG 保留原有背景，但增加安装三步说明；首次打开 app 会出现原生玻璃质感 onboarding，解释菜单栏入口、快捷触发、粒子计时和登录时自动启动状态。
 
 Release 下载建议优先选择 `VibeBlank.dmg`。如果本地构建没有 notarize，macOS 首次打开时可能需要右键选择「打开」。
 
@@ -130,6 +135,8 @@ dist/VibeBlank.dmg
 
 | 文档 | 内容 |
 | --- | --- |
+| [`docs/superpowers/specs/2026-06-22-vibeblank-new-user-onboarding-design.md`](docs/superpowers/specs/2026-06-22-vibeblank-new-user-onboarding-design.md) | V4 新用户 landing 和首次启动 onboarding 设计 |
+| [`docs/superpowers/specs/2026-06-22-vibeblank-v4-visual-overlay-design.md`](docs/superpowers/specs/2026-06-22-vibeblank-v4-visual-overlay-design.md) | V4 粒子计时和毛玻璃遮罩设计 |
 | [`docs/vibeblank-v3-requirements.md`](docs/vibeblank-v3-requirements.md) | V3 触发系统、官方触发角 spike、权限和验收标准 |
 | [`docs/superpowers/plans/2026-06-18-vibeblank-v3-trigger-system.md`](docs/superpowers/plans/2026-06-18-vibeblank-v3-trigger-system.md) | V3 触发系统实现计划 |
 | [`docs/vibeblank-v2-requirements.md`](docs/vibeblank-v2-requirements.md) | V2 需求、用户场景、验收标准 |

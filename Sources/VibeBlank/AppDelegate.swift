@@ -23,6 +23,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusPanel: NSPanel?
     private var statusPanelDismissMonitor: Any?
     private var settingsWindowController: SettingsWindowController?
+    private var onboardingWindowController: OnboardingWindowController?
     private var hotKeyConflictStatus: HotKeyConflictStatus = .unchecked
     private var keyboardPermissionStatus: KeyboardPermissionStatus = .unknown
     private var loginItemSyncStatus: LoginItemSyncStatus = .disabled
@@ -34,7 +35,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         syncTriggers()
         refreshStatusPanel()
 
-        if !settingsStore.hasCompletedFirstLaunch {
+        if !settingsStore.hasCompletedOnboarding {
+            showOnboarding()
+        } else if !settingsStore.hasCompletedFirstLaunch {
             showSettings()
             settingsStore.markFirstLaunchCompleted()
         }
@@ -283,6 +286,51 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         settingsWindowController?.show()
         postTriggerStatus()
+    }
+
+    private func showOnboarding() {
+        if onboardingWindowController == nil {
+            onboardingWindowController = OnboardingWindowController(
+                loginItemStatus: loginItemSyncStatus,
+                openLoginItemsSettings: { [weak self] in
+                    Task { @MainActor in
+                        self?.openLoginItemsSettings()
+                    }
+                },
+                start: { [weak self] in
+                    Task { @MainActor in
+                        self?.completeOnboarding()
+                    }
+                }
+            )
+        }
+        onboardingWindowController?.show(loginItemStatus: loginItemSyncStatus)
+        postTriggerStatus()
+    }
+
+    private func completeOnboarding() {
+        let shouldOpenSettings = !settingsStore.hasCompletedFirstLaunch
+
+        settingsStore.markOnboardingCompleted()
+        onboardingWindowController?.close()
+        onboardingWindowController = nil
+
+        if shouldOpenSettings {
+            settingsStore.markFirstLaunchCompleted()
+            showSettings()
+        }
+    }
+
+    private func openLoginItemsSettings() {
+        let urlStrings = [
+            "x-apple.systempreferences:com.apple.LoginItems-Settings.extension",
+            "x-apple.systempreferences:com.apple.preference.general?LoginItems"
+        ]
+
+        guard let url = urlStrings.compactMap(URL.init(string:)).first else {
+            return
+        }
+        NSWorkspace.shared.open(url)
     }
 
     private func quitFromPanel() {

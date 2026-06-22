@@ -70,4 +70,20 @@ enum AppCopy {
         static let restoreDefaults = "恢复默认设置"
         static let defaultsHint = "默认：登录启动，Command 三连，仅外接显示器。"
     }
+
+    enum Onboarding {
+        static let windowTitle = "欢迎使用黑码码"
+        static let eyebrow = "安装完成"
+        static let title = "黑码码已经准备好了"
+        static let subtitle = "它会常驻在菜单栏，需要遮住屏幕时，从菜单栏或快捷触发器一键开启。"
+        static let menuBarTitle = "从菜单栏开始"
+        static let menuBarDetail = "点击右上角的黑码码图标，可以开启黑屏、进入设置或退出应用。"
+        static let triggerTitle = "快捷进入黑屏"
+        static let triggerDetail = "默认 Command 三连开启；Esc 始终可以退出黑屏。"
+        static let timerTitle = "角落保留状态感"
+        static let timerDetail = "V4 可在黑屏角落显示粒子计时器，适合等待 AI 任务时保持节奏。"
+        static let launchStatusTitle = "登录时自动启动"
+        static let openLoginItems = "打开登录项设置"
+        static let start = "开始使用"
+    }
 }

@@ -402,6 +402,17 @@ private func checkFirstLaunchFlagPersists() throws {
     try expect(context.store.hasCompletedFirstLaunch == true, "first launch flag should persist true")
 }
 
+private func checkOnboardingFlagPersistsAndResets() throws {
+    let context = makeStore()
+    defer { context.defaults.removePersistentDomain(forName: context.suiteName) }
+
+    try expect(context.store.hasCompletedOnboarding == false, "onboarding flag should default to false")
+    context.store.markOnboardingCompleted()
+    try expect(context.store.hasCompletedOnboarding == true, "onboarding flag should persist true")
+    context.store.resetForTests()
+    try expect(context.store.hasCompletedOnboarding == false, "reset should clear onboarding flag")
+}
+
 let checks: [(String, () throws -> Void)] = [
     ("default settings match PRD", checkDefaultSettingsMatchPRD),
     ("settings save and reload", checkSaveAndReloadSettings),
@@ -417,7 +428,8 @@ let checks: [(String, () throws -> Void)] = [
     ("hot corner screen seam does not trigger", checkHotCornerScreenSeamDoesNotTrigger),
     ("hot corner cooldown requires leaving activation zone", checkHotCornerCooldownRequiresLeavingActivationZone),
     ("system session activation gate", checkSystemSessionActivationGate),
-    ("first launch flag persists", checkFirstLaunchFlagPersists)
+    ("first launch flag persists", checkFirstLaunchFlagPersists),
+    ("onboarding flag persists and resets", checkOnboardingFlagPersistsAndResets)
 ]
 
 do {
