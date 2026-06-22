@@ -11,14 +11,39 @@ final class SettingsWindowController {
         viewModel = SettingsViewModel(store: store)
 
         let hostingView = NSHostingView(rootView: SettingsView(viewModel: viewModel))
+        hostingView.translatesAutoresizingMaskIntoConstraints = false
+        hostingView.wantsLayer = true
+        hostingView.layer?.backgroundColor = NSColor.clear.cgColor
+
+        let glassView = NSVisualEffectView()
+        glassView.material = .underPageBackground
+        glassView.blendingMode = .behindWindow
+        glassView.state = .active
+        glassView.isEmphasized = false
+        glassView.wantsLayer = true
+        glassView.addSubview(hostingView)
+
         window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 560, height: 700),
-            styleMask: [.titled, .closable, .miniaturizable],
+            contentRect: NSRect(x: 0, y: 0, width: 940, height: 720),
+            styleMask: [.titled, .closable, .miniaturizable, .fullSizeContentView],
             backing: .buffered,
             defer: false
         )
         window.title = AppCopy.settingsWindowTitle
-        window.contentView = hostingView
+        window.titleVisibility = .hidden
+        window.titlebarAppearsTransparent = true
+        window.backgroundColor = .clear
+        window.isOpaque = false
+        window.isMovableByWindowBackground = true
+        window.hasShadow = true
+        window.minSize = NSSize(width: 860, height: 640)
+        window.contentView = glassView
+        NSLayoutConstraint.activate([
+            hostingView.leadingAnchor.constraint(equalTo: glassView.leadingAnchor),
+            hostingView.trailingAnchor.constraint(equalTo: glassView.trailingAnchor),
+            hostingView.topAnchor.constraint(equalTo: glassView.topAnchor),
+            hostingView.bottomAnchor.constraint(equalTo: glassView.bottomAnchor)
+        ])
         window.isReleasedWhenClosed = false
         window.center()
     }

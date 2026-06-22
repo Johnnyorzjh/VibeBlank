@@ -1,5 +1,6 @@
 import AppKit
 import Carbon.HIToolbox
+import SwiftUI
 import VibeBlankCore
 
 @MainActor
@@ -19,6 +20,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     )
 
     private var statusItem: NSStatusItem?
+    private var statusPanel: NSPanel?
+    private var statusPanelDismissMonitor: Any?
     private var settingsWindowController: SettingsWindowController?
     private var hotKeyConflictStatus: HotKeyConflictStatus = .unchecked
     private var keyboardPermissionStatus: KeyboardPermissionStatus = .unknown
@@ -29,7 +32,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         configureStatusItem()
         configureCallbacks()
         syncTriggers()
-        rebuildMenu()
+        refreshStatusPanel()
 
         if !settingsStore.hasCompletedFirstLaunch {
             showSettings()
@@ -53,6 +56,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             item.button?.title = AppCopy.appName
         }
         item.button?.toolTip = AppCopy.statusTooltip
+        item.button?.target = self
+        item.button?.action = #selector(toggleStatusPanel)
+        item.button?.sendAction(on: [.leftMouseUp, .rightMouseUp])
+        item.menu = nil
         statusItem = item
     }
 
@@ -66,7 +73,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func configureCallbacks() {
         overlayManager.onStateChange = { [weak self] in
             self?.updateOverlayEscapeHotKey()
-            self?.rebuildMenu()
+            self?.refreshStatusPanel()
         }
 
         comboHotKeyController.onPressed = { [weak self] in
@@ -118,94 +125,133 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         _ = escapeHotKeyController.update(isEnabled: overlayManager.isActive)
     }
 
-    private func rebuildMenu() {
-        let menu = NSMenu()
-
-        let toggleItem = NSMenuItem(
-            title: overlayManager.isActive ? AppCopy.Menu.deactivate : AppCopy.Menu.activate,
-            action: #selector(toggleOverlayFromMenu),
-            keyEquivalent: ""
-        )
-        toggleItem.target = self
-        menu.addItem(toggleItem)
-
-        let scopeItem = NSMenuItem(
-            title: "\(AppCopy.Menu.scopePrefix)：\(settingsStore.load().overlayScope.displayName)",
-            action: nil,
-            keyEquivalent: ""
-        )
-        scopeItem.isEnabled = false
-        menu.addItem(scopeItem)
-
-        let settings = settingsStore.load()
-
-        let primaryTriggerTitle: String
-        if settings.modifierTapTrigger.isEnabled {
-            primaryTriggerTitle = keyboardPermissionStatus == .needsAccessibilityPermission
-                ? AppCopy.Menu.primaryTriggerNeedsPermission
-                : AppCopy.Menu.primaryTriggerAvailable
-        } else {
-            primaryTriggerTitle = AppCopy.Menu.primaryTriggerOff
+    private func refreshStatusPanel() {
+        guard let statusPanel else {
+            return
         }
-
-        let primaryTriggerItem = NSMenuItem(
-            title: primaryTriggerTitle,
-            action: nil,
-            keyEquivalent: ""
-        )
-        primaryTriggerItem.isEnabled = false
-        menu.addItem(primaryTriggerItem)
-
-        let comboTitle: String
-        if settings.comboHotKeyTrigger.isEnabled {
-            comboTitle = hotKeyConflictStatus == .available
-                ? AppCopy.Menu.comboHotkeyAvailable(settings.comboHotKeyTrigger.displayName)
-                : AppCopy.Menu.comboHotkeyUnavailable
-        } else {
-            comboTitle = AppCopy.Menu.comboHotkeyOff
-        }
-
-        let comboItem = NSMenuItem(title: comboTitle, action: nil, keyEquivalent: "")
-        comboItem.isEnabled = false
-        menu.addItem(comboItem)
-
-        let cornerTitle = settings.cornerTrigger.isEnabled
-            ? AppCopy.Menu.cornerAvailable(settings.cornerTrigger.corner.displayName)
-            : AppCopy.Menu.cornerOff
-
-        let cornerItem = NSMenuItem(title: cornerTitle, action: nil, keyEquivalent: "")
-        cornerItem.isEnabled = false
-        menu.addItem(cornerItem)
-
-        let loginItem = NSMenuItem(title: loginItemSyncStatus.displayName, action: nil, keyEquivalent: "")
-        loginItem.isEnabled = false
-        menu.addItem(loginItem)
-
-        menu.addItem(.separator())
-
-        let settingsItem = NSMenuItem(
-            title: AppCopy.Menu.settings,
-            action: #selector(openSettingsFromMenu),
-            keyEquivalent: ","
-        )
-        settingsItem.target = self
-        menu.addItem(settingsItem)
-
-        menu.addItem(.separator())
-
-        let quitItem = NSMenuItem(
-            title: AppCopy.Menu.quit,
-            action: #selector(quitFromMenu),
-            keyEquivalent: "q"
-        )
-        quitItem.target = self
-        menu.addItem(quitItem)
-
-        statusItem?.menu = menu
+        statusPanel.contentView = makeStatusPanelHostingView(size: statusPanel.frame.size)
     }
 
-    @objc private func toggleOverlayFromMenu() {
-        toggleOverlay()
+    private func makeStatusPanelHostingView(size: NSSize) -> NSView {
+        let rootView = makeStatusPanelView()
+            .frame(width: size.width, height: size.height, alignment: .center)
+        let hostingView = NSHostingView(rootView: rootView)
+        hostingView.frame = NSRect(origin: .zero, size: size)
+        hostingView.autoresizingMask = [.width, .height]
+        hostingView.wantsLayer = true
+        hostingView.layer?.backgroundColor = NSColor.clear.cgColor
+        return hostingView
+    }
+
+    private func makeStatusPanelView() -> StatusPanelView {
+        StatusPanelView(
+            settings: settingsStore.load(),
+            isOverlayActive: overlayManager.isActive,
+            keyboardPermissionStatus: keyboardPermissionStatus,
+            hotKeyConflictStatus: hotKeyConflictStatus,
+            loginItemStatus: loginItemSyncStatus,
+            toggleOverlay: { [weak self] in
+                Task { @MainActor in
+                    self?.toggleOverlay()
+                    self?.refreshStatusPanel()
+                }
+            },
+            openSettings: { [weak self] in
+                Task { @MainActor in
+                    self?.closeStatusPanel()
+                    self?.showSettings()
+                }
+            },
+            quit: { [weak self] in
+                Task { @MainActor in
+                    self?.quitFromPanel()
+                }
+            }
+        )
+    }
+
+    @objc private func toggleStatusPanel() {
+        guard let button = statusItem?.button else {
+            return
+        }
+
+        if statusPanel?.isVisible == true {
+            closeStatusPanel()
+            return
+        }
+
+        showStatusPanel(relativeTo: button)
+    }
+
+    private func showStatusPanel(relativeTo button: NSStatusBarButton) {
+        let frame = statusPanelFrame(relativeTo: button)
+        let panel = statusPanel ?? NSPanel(
+            contentRect: frame,
+            styleMask: [.borderless, .nonactivatingPanel],
+            backing: .buffered,
+            defer: false
+        )
+        panel.backgroundColor = .clear
+        panel.isOpaque = false
+        panel.hasShadow = false
+        panel.level = .floating
+        panel.collectionBehavior = [.canJoinAllSpaces, .transient, .ignoresCycle]
+        panel.isReleasedWhenClosed = false
+        panel.contentView = makeStatusPanelHostingView(size: frame.size)
+        panel.setFrame(frame, display: true)
+        statusPanel = panel
+        panel.orderFrontRegardless()
+        installStatusPanelDismissMonitor()
+    }
+
+    private func closeStatusPanel() {
+        statusPanel?.orderOut(nil)
+        removeStatusPanelDismissMonitor()
+    }
+
+    private func statusPanelFrame(relativeTo button: NSStatusBarButton) -> NSRect {
+        let screen = button.window?.screen ?? NSScreen.main
+        let visibleFrame = screen?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1280, height: 800)
+        let size = statusPanelSize(in: visibleFrame)
+
+        let buttonFrame: NSRect
+        if let window = button.window {
+            buttonFrame = window.convertToScreen(button.convert(button.bounds, to: nil))
+        } else {
+            buttonFrame = NSRect(x: visibleFrame.maxX - size.width, y: visibleFrame.maxY, width: 0, height: 0)
+        }
+
+        let horizontalMargin: CGFloat = 10
+        let verticalMargin: CGFloat = 8
+        let proposedX = buttonFrame.midX - size.width / 2
+        let minX = visibleFrame.minX + horizontalMargin
+        let maxX = visibleFrame.maxX - size.width - horizontalMargin
+        let x = min(max(proposedX, minX), maxX)
+        let y = visibleFrame.maxY - size.height - verticalMargin
+
+        return NSRect(origin: NSPoint(x: x, y: y), size: size)
+    }
+
+    private func statusPanelSize(in visibleFrame: NSRect) -> NSSize {
+        NSSize(width: 384, height: min(634, max(544, visibleFrame.height - 18)))
+    }
+
+    private func installStatusPanelDismissMonitor() {
+        guard statusPanelDismissMonitor == nil else {
+            return
+        }
+        statusPanelDismissMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
+            Task { @MainActor in
+                self?.closeStatusPanel()
+            }
+        }
+    }
+
+    private func removeStatusPanelDismissMonitor() {
+        if let statusPanelDismissMonitor {
+            NSEvent.removeMonitor(statusPanelDismissMonitor)
+            self.statusPanelDismissMonitor = nil
+        }
     }
 
     private func toggleOverlay() {
@@ -231,10 +277,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         overlayManager.activate(settings: settingsStore.load())
     }
 
-    @objc private func openSettingsFromMenu() {
-        showSettings()
-    }
-
     private func showSettings() {
         if settingsWindowController == nil {
             settingsWindowController = SettingsWindowController(store: settingsStore)
@@ -243,14 +285,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         postTriggerStatus()
     }
 
-    @objc private func quitFromMenu() {
+    private func quitFromPanel() {
+        closeStatusPanel()
         overlayManager.forceDeactivate()
         NSApp.terminate(nil)
     }
 
     @objc private func settingsDidChange() {
         syncTriggers()
-        rebuildMenu()
+        refreshStatusPanel()
 
         if overlayManager.isActive, systemSessionGuard.canActivateOverlay {
             overlayManager.activate(settings: settingsStore.load())
