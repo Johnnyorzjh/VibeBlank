@@ -16,11 +16,53 @@ public enum OverlayScope: String, Codable, CaseIterable, Equatable, Identifiable
     }
 }
 
+public enum OverlayBackgroundStyle: String, Codable, CaseIterable, Equatable, Identifiable {
+    case pureBlack
+    case whiteGlass
+    case blackGlass
+
+    public var id: String { rawValue }
+
+    public var displayName: String {
+        switch self {
+        case .pureBlack:
+            return "纯黑"
+        case .whiteGlass:
+            return "白色毛玻璃"
+        case .blackGlass:
+            return "黑色强毛玻璃"
+        }
+    }
+}
+
+public enum TimerPlacement: String, Codable, CaseIterable, Equatable, Identifiable {
+    case topLeft
+    case topRight
+    case bottomLeft
+    case bottomRight
+
+    public var id: String { rawValue }
+
+    public var displayName: String {
+        switch self {
+        case .topLeft:
+            return "左上角"
+        case .topRight:
+            return "右上角"
+        case .bottomLeft:
+            return "左下角"
+        case .bottomRight:
+            return "右下角"
+        }
+    }
+}
+
 public enum OverlayContentMode: String, Codable, CaseIterable, Equatable, Identifiable {
     case blank
     case time
     case statusText
     case customText
+    case particleTimer
 
     public var id: String { rawValue }
 
@@ -34,6 +76,8 @@ public enum OverlayContentMode: String, Codable, CaseIterable, Equatable, Identi
             return "状态文字"
         case .customText:
             return "自定义文字"
+        case .particleTimer:
+            return "粒子计时"
         }
     }
 }
@@ -179,6 +223,8 @@ public enum HotKeyConflictStatus: String, Codable, Equatable {
 public struct AppSettings: Codable, Equatable {
     public var overlayScope: OverlayScope
     public var overlayContentMode: OverlayContentMode
+    public var overlayBackgroundStyle: OverlayBackgroundStyle
+    public var timerPlacement: TimerPlacement
     public var customText: String
     public var clickToExitEnabled: Bool
     public var keyToExitEnabled: Bool
@@ -192,6 +238,8 @@ public struct AppSettings: Codable, Equatable {
     public init(
         overlayScope: OverlayScope = .externalDisplays,
         overlayContentMode: OverlayContentMode = .blank,
+        overlayBackgroundStyle: OverlayBackgroundStyle = .pureBlack,
+        timerPlacement: TimerPlacement = .bottomRight,
         customText: String = "",
         clickToExitEnabled: Bool = false,
         keyToExitEnabled: Bool = false,
@@ -204,6 +252,8 @@ public struct AppSettings: Codable, Equatable {
     ) {
         self.overlayScope = overlayScope
         self.overlayContentMode = overlayContentMode
+        self.overlayBackgroundStyle = overlayBackgroundStyle
+        self.timerPlacement = timerPlacement
         self.customText = customText
         self.clickToExitEnabled = clickToExitEnabled
         self.keyToExitEnabled = keyToExitEnabled
@@ -220,6 +270,8 @@ public struct AppSettings: Codable, Equatable {
     private enum CodingKeys: String, CodingKey {
         case overlayScope
         case overlayContentMode
+        case overlayBackgroundStyle
+        case timerPlacement
         case customText
         case clickToExitEnabled
         case keyToExitEnabled
@@ -235,6 +287,11 @@ public struct AppSettings: Codable, Equatable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         overlayScope = try container.decodeIfPresent(OverlayScope.self, forKey: .overlayScope) ?? .externalDisplays
         overlayContentMode = try container.decodeIfPresent(OverlayContentMode.self, forKey: .overlayContentMode) ?? .blank
+        overlayBackgroundStyle = try container.decodeIfPresent(
+            OverlayBackgroundStyle.self,
+            forKey: .overlayBackgroundStyle
+        ) ?? .pureBlack
+        timerPlacement = try container.decodeIfPresent(TimerPlacement.self, forKey: .timerPlacement) ?? .bottomRight
         customText = try container.decodeIfPresent(String.self, forKey: .customText) ?? ""
         clickToExitEnabled = try container.decodeIfPresent(Bool.self, forKey: .clickToExitEnabled) ?? false
         keyToExitEnabled = try container.decodeIfPresent(Bool.self, forKey: .keyToExitEnabled) ?? false

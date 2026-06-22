@@ -111,6 +111,92 @@ private func checkV2SettingsUpgradeToV3Defaults() throws {
     try expect(settings.cornerTrigger.isEnabled == false, "hot corner should default off for upgrades")
 }
 
+private func checkV4DefaultsMatchVisualOverlaySpec() throws {
+    let settings = AppSettings.defaults
+
+    try expect(settings.overlayBackgroundStyle == .pureBlack, "V4 default background should be pure black")
+    try expect(settings.overlayContentMode == .blank, "V4 default content should remain blank")
+    try expect(settings.timerPlacement == .bottomRight, "V4 default timer placement should be bottom right")
+}
+
+private func checkSaveAndReloadV4VisualSettings() throws {
+    let context = makeStore()
+    defer { context.defaults.removePersistentDomain(forName: context.suiteName) }
+
+    let settings = AppSettings(
+        overlayScope: .allDisplays,
+        overlayContentMode: .particleTimer,
+        overlayBackgroundStyle: .blackGlass,
+        timerPlacement: .topLeft,
+        customText: "Focus",
+        clickToExitEnabled: true,
+        keyToExitEnabled: true,
+        launchAtLoginEnabled: false,
+        cornerTrigger: CornerTriggerSettings(isEnabled: true, corner: .bottomRight),
+        modifierTapTrigger: ModifierTapTriggerSettings(isEnabled: true, commandSide: .left),
+        comboHotKeyTrigger: ComboHotKeySettings(
+            isEnabled: true,
+            keyCode: 9,
+            modifiers: 768,
+            displayName: "Shift + Command + V"
+        ),
+        keyboardPermissionStatus: .granted,
+        hotKeyConflictStatus: .available
+    )
+
+    context.store.save(settings)
+
+    try expect(context.store.load() == settings, "saved V4 visual settings should reload exactly")
+}
+
+private func checkV3SettingsUpgradeToV4Defaults() throws {
+    let context = makeStore()
+    defer { context.defaults.removePersistentDomain(forName: context.suiteName) }
+
+    let v3JSON = """
+    {
+      "overlayScope": "externalDisplays",
+      "overlayContentMode": "time",
+      "customText": "",
+      "clickToExitEnabled": false,
+      "keyToExitEnabled": false,
+      "launchAtLoginEnabled": true,
+      "cornerTrigger": {
+        "isEnabled": false,
+        "corner": "topRight"
+      },
+      "modifierTapTrigger": {
+        "isEnabled": true,
+        "commandSide": "any",
+        "tapCount": 3,
+        "maxInterval": 0.8
+      },
+      "comboHotKeyTrigger": {
+        "isEnabled": false,
+        "keyCode": 11,
+        "modifiers": 6400,
+        "displayName": "Control + Option + Command + B"
+      },
+      "keyboardPermissionStatus": "unknown",
+      "hotKeyConflictStatus": "unchecked"
+    }
+    """
+    context.defaults.set(Data(v3JSON.utf8), forKey: "settings")
+
+    let settings = context.store.load()
+    try expect(settings.overlayBackgroundStyle == .pureBlack, "V3 settings should receive pure black V4 default")
+    try expect(settings.timerPlacement == .bottomRight, "V3 settings should receive bottom-right timer placement")
+    try expect(settings.overlayContentMode == .time, "V3 content mode should migrate")
+}
+
+private func checkElapsedTimerFormatting() throws {
+    try expect(ElapsedTimerFormatter.string(elapsedSeconds: 0) == "00:00", "zero elapsed seconds should format as 00:00")
+    try expect(ElapsedTimerFormatter.string(elapsedSeconds: 317) == "05:17", "317 seconds should format as 05:17")
+    try expect(ElapsedTimerFormatter.string(elapsedSeconds: 3_599) == "59:59", "3599 seconds should format as 59:59")
+    try expect(ElapsedTimerFormatter.string(elapsedSeconds: 3_600) == "01:00:00", "3600 seconds should format as 01:00:00")
+    try expect(ElapsedTimerFormatter.string(elapsedSeconds: -10) == "00:00", "negative elapsed seconds should clamp to 00:00")
+}
+
 private func checkHotCornerDirectEntryDoesNotTrigger() throws {
     var evaluator = HotCornerPushEvaluator()
     let screens = [
@@ -321,6 +407,10 @@ let checks: [(String, () throws -> Void)] = [
     ("settings save and reload", checkSaveAndReloadSettings),
     ("corrupt settings fallback", checkCorruptSettingsFallBackToDefaults),
     ("V2 settings upgrade to V3 defaults", checkV2SettingsUpgradeToV3Defaults),
+    ("V4 defaults match visual overlay spec", checkV4DefaultsMatchVisualOverlaySpec),
+    ("V4 visual settings save and reload", checkSaveAndReloadV4VisualSettings),
+    ("V3 settings upgrade to V4 defaults", checkV3SettingsUpgradeToV4Defaults),
+    ("elapsed timer formatting", checkElapsedTimerFormatting),
     ("hot corner direct entry does not trigger", checkHotCornerDirectEntryDoesNotTrigger),
     ("hot corner interior push triggers once", checkHotCornerInteriorPushTriggersOnce),
     ("hot corner edge slides do not trigger", checkHotCornerEdgeSlidesDoNotTrigger),

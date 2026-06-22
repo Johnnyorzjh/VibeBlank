@@ -6,6 +6,7 @@ struct OverlayContentView: View {
     @ObservedObject var transition: OverlayTransitionModel
 
     @State private var now = Date()
+    @State private var activationDate = Date()
 
     private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
@@ -47,7 +48,13 @@ struct OverlayContentView: View {
             return "黑码码已开启"
         case .customText:
             return settings.sanitizedCustomText
+        case .particleTimer:
+            return ElapsedTimerFormatter.string(elapsedSeconds: elapsedSeconds)
         }
+    }
+
+    private var elapsedSeconds: Int {
+        max(0, Int(now.timeIntervalSince(activationDate)))
     }
 
     private var formattedTime: String {
