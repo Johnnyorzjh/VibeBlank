@@ -1,5 +1,6 @@
 import Carbon.HIToolbox
 import Foundation
+import VibeBlankCore
 
 final class HotKeyController {
     var onPressed: (() -> Void)?
@@ -7,17 +8,20 @@ final class HotKeyController {
 
     private var hotKeyRef: EventHotKeyRef?
     private var eventHandlerRef: EventHandlerRef?
-    private let keyCode: UInt32
-    private let modifiers: UInt32
+    private var keyCode: UInt32
+    private var modifiers: UInt32
+    private let isExclusive: Bool
     private let hotKeyID: EventHotKeyID
 
     init(
         keyCode: UInt32 = UInt32(kVK_ANSI_B),
         modifiers: UInt32 = UInt32(controlKey | optionKey | cmdKey),
-        id: UInt32 = 1
+        id: UInt32 = 1,
+        isExclusive: Bool = true
     ) {
         self.keyCode = keyCode
         self.modifiers = modifiers
+        self.isExclusive = isExclusive
         self.hotKeyID = EventHotKeyID(signature: 0x56424C4B, id: id)
     }
 
@@ -33,6 +37,40 @@ final class HotKeyController {
             unregister()
             return true
         }
+    }
+
+    @discardableResult
+    func update(settings: ComboHotKeySettings) -> Bool {
+        let shouldReRegister = keyCode != settings.keyCode || modifiers != settings.modifiers
+        if shouldReRegister {
+            unregister()
+            keyCode = settings.keyCode
+            modifiers = settings.modifiers
+        }
+
+        return update(isEnabled: settings.isEnabled)
+    }
+
+    static func registrationStatus(for settings: ComboHotKeySettings) -> OSStatus {
+        registrationStatus(keyCode: settings.keyCode, modifiers: settings.modifiers)
+    }
+
+    static func registrationStatus(keyCode: UInt32, modifiers: UInt32) -> OSStatus {
+        var registeredHotKey: EventHotKeyRef?
+        let status = RegisterEventHotKey(
+            keyCode,
+            modifiers,
+            EventHotKeyID(signature: 0x56425453, id: UInt32.random(in: 10_000...99_999)),
+            GetApplicationEventTarget(),
+            UInt32(kEventHotKeyExclusive),
+            &registeredHotKey
+        )
+
+        if let registeredHotKey {
+            UnregisterEventHotKey(registeredHotKey)
+        }
+
+        return status
     }
 
     private func register() -> Bool {
@@ -81,7 +119,7 @@ final class HotKeyController {
             modifiers,
             hotKeyID,
             GetApplicationEventTarget(),
-            0,
+            isExclusive ? UInt32(kEventHotKeyExclusive) : 0,
             &registeredHotKey
         )
 

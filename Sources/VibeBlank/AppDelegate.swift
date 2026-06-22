@@ -6,22 +6,28 @@ import VibeBlankCore
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private let settingsStore = SettingsStore()
     private let overlayManager = OverlayManager()
-    private let hotKeyController = HotKeyController()
+    private let comboHotKeyController = HotKeyController()
+    private let modifierTapTriggerController = ModifierTapTriggerController()
+    private let hotCornerTriggerController = HotCornerTriggerController()
+    private let loginItemController = LoginItemController()
     private let escapeHotKeyController = HotKeyController(
         keyCode: UInt32(kVK_Escape),
         modifiers: 0,
-        id: 2
+        id: 2,
+        isExclusive: false
     )
 
     private var statusItem: NSStatusItem?
     private var settingsWindowController: SettingsWindowController?
-    private var hotKeyRegistrationSucceeded = true
+    private var hotKeyConflictStatus: HotKeyConflictStatus = .unchecked
+    private var keyboardPermissionStatus: KeyboardPermissionStatus = .unknown
+    private var loginItemSyncStatus: LoginItemSyncStatus = .disabled
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         ProcessInfo.processInfo.disableAutomaticTermination(AppCopy.residentUtilityReason)
         configureStatusItem()
         configureCallbacks()
-        updateHotKey()
+        syncTriggers()
         rebuildMenu()
 
         if !settingsStore.hasCompletedFirstLaunch {
@@ -62,8 +68,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self?.rebuildMenu()
         }
 
-        hotKeyController.onPressed = { [weak self] in
+        comboHotKeyController.onPressed = { [weak self] in
             self?.toggleOverlay()
+        }
+
+        modifierTapTriggerController.onPressed = { [weak self] in
+            self?.toggleOverlay()
+        }
+
+        hotCornerTriggerController.onTriggered = { [weak self] in
+            self?.activateOverlayIfNeeded()
         }
 
         escapeHotKeyController.onPressed = { [weak self] in
@@ -78,8 +92,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         )
     }
 
-    private func updateHotKey() {
-        hotKeyRegistrationSucceeded = hotKeyController.update(isEnabled: settingsStore.load().globalHotkeyEnabled)
+    private func syncTriggers() {
+        let settings = settingsStore.load()
+
+        loginItemSyncStatus = loginItemController.sync(isEnabled: settings.launchAtLoginEnabled)
+        keyboardPermissionStatus = modifierTapTriggerController.update(settings: settings.modifierTapTrigger)
+        let hotKeyRegistrationSucceeded = comboHotKeyController.update(settings: settings.comboHotKeyTrigger)
+
+        if settings.comboHotKeyTrigger.isEnabled {
+            hotKeyConflictStatus = hotKeyRegistrationSucceeded ? .available : .conflict
+        } else {
+            hotKeyConflictStatus = .disabled
+        }
+
+        hotCornerTriggerController.update(settings: settings.cornerTrigger)
+        postTriggerStatus()
     }
 
     private func updateOverlayEscapeHotKey() {
@@ -105,20 +132,49 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         scopeItem.isEnabled = false
         menu.addItem(scopeItem)
 
-        let hotkeyTitle: String
-        if settingsStore.load().globalHotkeyEnabled {
-            hotkeyTitle = hotKeyRegistrationSucceeded ? AppCopy.Menu.hotkeyAvailable : AppCopy.Menu.hotkeyUnavailable
+        let settings = settingsStore.load()
+
+        let primaryTriggerTitle: String
+        if settings.modifierTapTrigger.isEnabled {
+            primaryTriggerTitle = keyboardPermissionStatus == .needsAccessibilityPermission
+                ? AppCopy.Menu.primaryTriggerNeedsPermission
+                : AppCopy.Menu.primaryTriggerAvailable
         } else {
-            hotkeyTitle = AppCopy.Menu.hotkeyOff
+            primaryTriggerTitle = AppCopy.Menu.primaryTriggerOff
         }
 
-        let hotkeyItem = NSMenuItem(
-            title: hotkeyTitle,
+        let primaryTriggerItem = NSMenuItem(
+            title: primaryTriggerTitle,
             action: nil,
             keyEquivalent: ""
         )
-        hotkeyItem.isEnabled = false
-        menu.addItem(hotkeyItem)
+        primaryTriggerItem.isEnabled = false
+        menu.addItem(primaryTriggerItem)
+
+        let comboTitle: String
+        if settings.comboHotKeyTrigger.isEnabled {
+            comboTitle = hotKeyConflictStatus == .available
+                ? AppCopy.Menu.comboHotkeyAvailable(settings.comboHotKeyTrigger.displayName)
+                : AppCopy.Menu.comboHotkeyUnavailable
+        } else {
+            comboTitle = AppCopy.Menu.comboHotkeyOff
+        }
+
+        let comboItem = NSMenuItem(title: comboTitle, action: nil, keyEquivalent: "")
+        comboItem.isEnabled = false
+        menu.addItem(comboItem)
+
+        let cornerTitle = settings.cornerTrigger.isEnabled
+            ? AppCopy.Menu.cornerAvailable(settings.cornerTrigger.corner.displayName)
+            : AppCopy.Menu.cornerOff
+
+        let cornerItem = NSMenuItem(title: cornerTitle, action: nil, keyEquivalent: "")
+        cornerItem.isEnabled = false
+        menu.addItem(cornerItem)
+
+        let loginItem = NSMenuItem(title: loginItemSyncStatus.displayName, action: nil, keyEquivalent: "")
+        loginItem.isEnabled = false
+        menu.addItem(loginItem)
 
         menu.addItem(.separator())
 
@@ -151,6 +207,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         overlayManager.toggle(settings: settingsStore.load())
     }
 
+    private func activateOverlayIfNeeded() {
+        guard !overlayManager.isActive else {
+            return
+        }
+        overlayManager.activate(settings: settingsStore.load())
+    }
+
     @objc private func openSettingsFromMenu() {
         showSettings()
     }
@@ -160,6 +223,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             settingsWindowController = SettingsWindowController(store: settingsStore)
         }
         settingsWindowController?.show()
+        postTriggerStatus()
     }
 
     @objc private func quitFromMenu() {
@@ -168,11 +232,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func settingsDidChange() {
-        updateHotKey()
+        syncTriggers()
         rebuildMenu()
 
         if overlayManager.isActive {
             overlayManager.activate(settings: settingsStore.load())
         }
+    }
+
+    private func postTriggerStatus() {
+        NotificationCenter.default.post(
+            name: .vibeBlankTriggerStatusDidChange,
+            object: nil,
+            userInfo: [
+                TriggerStatusUserInfoKey.keyboardPermission: keyboardPermissionStatus.rawValue,
+                TriggerStatusUserInfoKey.hotKeyConflict: hotKeyConflictStatus.rawValue,
+                TriggerStatusUserInfoKey.loginItem: loginItemSyncStatus.displayName
+            ]
+        )
     }
 }
