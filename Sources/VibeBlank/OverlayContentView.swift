@@ -12,15 +12,7 @@ struct OverlayContentView: View {
 
     var body: some View {
         ZStack {
-            Color.clear.ignoresSafeArea()
-
-            EdgeCollapseShape(progress: min(1, transition.coverage + 0.045))
-                .fill(Color.black.opacity(0.34), style: FillStyle(eoFill: true))
-                .ignoresSafeArea()
-
-            EdgeCollapseShape(progress: transition.coverage)
-                .fill(Color.black, style: FillStyle(eoFill: true))
-                .ignoresSafeArea()
+            OverlayBackgroundView(style: settings.overlayBackgroundStyle, transition: transition)
 
             if let text = overlayText {
                 Text(text)
@@ -62,42 +54,5 @@ struct OverlayContentView: View {
         formatter.timeStyle = .short
         formatter.dateStyle = .none
         return formatter.string(from: now)
-    }
-}
-
-private struct EdgeCollapseShape: Shape {
-    var progress: CGFloat
-
-    var animatableData: CGFloat {
-        get { progress }
-        set { progress = newValue }
-    }
-
-    func path(in rect: CGRect) -> Path {
-        let clampedProgress = min(1, max(0, progress))
-        var path = Path()
-        path.addRect(rect)
-
-        guard clampedProgress < 0.995 else {
-            return path
-        }
-
-        let hole = rect.insetBy(
-            dx: rect.width * clampedProgress / 2,
-            dy: rect.height * clampedProgress / 2
-        )
-
-        guard hole.width > 0, hole.height > 0 else {
-            return path
-        }
-
-        path.addRoundedRect(
-            in: hole,
-            cornerSize: CGSize(
-                width: min(rect.width, rect.height) * 0.04 * (1 - clampedProgress),
-                height: min(rect.width, rect.height) * 0.04 * (1 - clampedProgress)
-            )
-        )
-        return path
     }
 }
