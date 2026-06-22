@@ -33,7 +33,9 @@ struct SettingsView: View {
         .frame(width: 940, height: 720)
         .tint(GlassPalette.accent)
         .animation(reduceMotion ? nil : .easeInOut(duration: 0.18), value: selectedPage)
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.18), value: viewModel.settings.overlayBackgroundStyle)
         .animation(reduceMotion ? nil : .easeInOut(duration: 0.18), value: viewModel.settings.overlayContentMode)
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.18), value: viewModel.settings.timerPlacement)
         .animation(reduceMotion ? nil : .easeInOut(duration: 0.18), value: viewModel.settings.cornerTrigger.isEnabled)
         .animation(reduceMotion ? nil : .easeInOut(duration: 0.18), value: viewModel.settings.modifierTapTrigger.isEnabled)
         .animation(reduceMotion ? nil : .easeInOut(duration: 0.18), value: viewModel.settings.comboHotKeyTrigger.isEnabled)
@@ -176,6 +178,20 @@ struct SettingsView: View {
             }
 
             SettingsRow(
+                symbolName: "camera.filters",
+                title: AppCopy.Settings.backgroundStylePicker,
+                detail: AppCopy.Settings.backgroundStylePickerDetail
+            ) {
+                Picker(AppCopy.Settings.backgroundStylePicker, selection: $viewModel.settings.overlayBackgroundStyle) {
+                    ForEach(OverlayBackgroundStyle.allCases) { style in
+                        Text(style.displayName).tag(style)
+                    }
+                }
+                .labelsHidden()
+                .frame(width: 178)
+            }
+
+            SettingsRow(
                 symbolName: "textformat",
                 title: AppCopy.Settings.contentPicker,
                 detail: AppCopy.Settings.contentPickerDetail
@@ -187,6 +203,23 @@ struct SettingsView: View {
                 }
                 .labelsHidden()
                 .frame(width: 178)
+            }
+
+            if viewModel.settings.overlayContentMode == .particleTimer {
+                SettingsRow(
+                    symbolName: "arrow.up.left.and.arrow.down.right",
+                    title: AppCopy.Settings.timerPlacementPicker,
+                    detail: AppCopy.Settings.timerPlacementPickerDetail
+                ) {
+                    Picker(AppCopy.Settings.timerPlacementPicker, selection: $viewModel.settings.timerPlacement) {
+                        ForEach(TimerPlacement.allCases) { placement in
+                            Text(placement.displayName).tag(placement)
+                        }
+                    }
+                    .labelsHidden()
+                    .frame(width: 120)
+                }
+                .transition(.opacity)
             }
 
             if viewModel.settings.overlayContentMode == .customText {
