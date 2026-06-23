@@ -35,6 +35,7 @@ struct SettingsView: View {
         .animation(reduceMotion ? nil : .easeInOut(duration: 0.18), value: viewModel.settings.cornerTrigger.isEnabled)
         .animation(reduceMotion ? nil : .easeInOut(duration: 0.18), value: viewModel.settings.modifierTapTrigger.isEnabled)
         .animation(reduceMotion ? nil : .easeInOut(duration: 0.18), value: viewModel.settings.comboHotKeyTrigger.isEnabled)
+        .liquidGlassPreferencesFromSystem()
     }
 
     private func sidebarShell(layout: SettingsResponsiveLayout) -> some View {
@@ -817,6 +818,7 @@ private struct SidebarItem: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(page.title)
+        .glassHoverExpansion(cornerRadius: 14, isProminent: isSelected)
     }
 }
 
@@ -847,6 +849,7 @@ private struct CompactNavItem: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(page.title)
+        .glassHoverExpansion(cornerRadius: 18, isProminent: isSelected)
     }
 
     private var selectedFill: Color {

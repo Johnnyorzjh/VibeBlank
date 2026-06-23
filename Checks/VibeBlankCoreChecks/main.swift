@@ -407,10 +407,21 @@ private func checkOnboardingFlagPersistsAndResets() throws {
     defer { context.defaults.removePersistentDomain(forName: context.suiteName) }
 
     try expect(context.store.hasCompletedOnboarding == false, "onboarding flag should default to false")
+    try expect(context.store.completedOnboardingVersion == 0, "onboarding version should default to zero")
+    context.defaults.set(true, forKey: "hasCompletedOnboarding")
+    try expect(
+        context.store.hasCompletedOnboarding == false,
+        "legacy boolean-only onboarding completion should not satisfy the current version"
+    )
     context.store.markOnboardingCompleted()
     try expect(context.store.hasCompletedOnboarding == true, "onboarding flag should persist true")
+    try expect(
+        context.store.completedOnboardingVersion == SettingsStore.currentOnboardingVersion,
+        "onboarding completion should persist the current onboarding version"
+    )
     context.store.resetForTests()
     try expect(context.store.hasCompletedOnboarding == false, "reset should clear onboarding flag")
+    try expect(context.store.completedOnboardingVersion == 0, "reset should clear onboarding version")
 }
 
 let checks: [(String, () throws -> Void)] = [

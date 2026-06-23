@@ -20,6 +20,7 @@ struct OverlayContentView: View {
         .onReceive(timer) { value in
             now = value
         }
+        .liquidGlassPreferencesFromSystem()
     }
 
     @ViewBuilder

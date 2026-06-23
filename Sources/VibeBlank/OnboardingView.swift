@@ -29,6 +29,7 @@ struct OnboardingView: View {
             }
         }
         .foregroundStyle(.primary)
+        .liquidGlassPreferencesFromSystem()
     }
 
     @ViewBuilder
@@ -135,6 +136,7 @@ struct OnboardingView: View {
         }
         .padding(12)
         .liquidGlassSurface(cornerRadius: 20, material: .popover, prominence: .footer)
+        .glassHoverExpansion(cornerRadius: 20, isProminent: true)
     }
 
     private var loginItemCard: some View {
@@ -162,6 +164,7 @@ struct OnboardingView: View {
         }
         .padding(12)
         .liquidGlassSurface(cornerRadius: 16, material: .popover, prominence: .onboarding)
+        .glassHoverExpansion(cornerRadius: 16)
     }
 
     private var guideImage: some View {
@@ -180,6 +183,7 @@ struct OnboardingView: View {
                 .strokeBorder(Color.white.opacity(0.18), lineWidth: 1)
         )
         .shadow(color: .black.opacity(0.22), radius: 24, x: 0, y: 18)
+        .glassHoverExpansion(cornerRadius: 8, isProminent: true)
     }
 
     private var loginItemIconName: String {

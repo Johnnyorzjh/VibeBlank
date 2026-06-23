@@ -104,6 +104,7 @@ struct StatusPanelView: View {
         .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
         .liquidGlassSurface(cornerRadius: 28, material: .popover, prominence: .menu)
         .tint(PanelPalette.accent)
+        .liquidGlassPreferencesFromSystem()
     }
 
     private var header: some View {
@@ -218,6 +219,7 @@ private struct PanelInfoRow: View {
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 7)
+        .glassHoverExpansion(cornerRadius: 14, isProminent: isActive)
     }
 }
 

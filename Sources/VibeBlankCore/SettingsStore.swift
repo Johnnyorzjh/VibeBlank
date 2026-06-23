@@ -5,7 +5,10 @@ public final class SettingsStore {
         static let settings = "settings"
         static let hasCompletedFirstLaunch = "hasCompletedFirstLaunch"
         static let hasCompletedOnboarding = "hasCompletedOnboarding"
+        static let completedOnboardingVersion = "completedOnboardingVersion"
     }
+
+    public static let currentOnboardingVersion = 2
 
     private let defaults: UserDefaults
     private let encoder = JSONEncoder()
@@ -43,16 +46,22 @@ public final class SettingsStore {
     }
 
     public var hasCompletedOnboarding: Bool {
-        defaults.bool(forKey: Keys.hasCompletedOnboarding)
+        completedOnboardingVersion >= Self.currentOnboardingVersion
     }
 
     public func markOnboardingCompleted() {
         defaults.set(true, forKey: Keys.hasCompletedOnboarding)
+        defaults.set(Self.currentOnboardingVersion, forKey: Keys.completedOnboardingVersion)
+    }
+
+    public var completedOnboardingVersion: Int {
+        defaults.integer(forKey: Keys.completedOnboardingVersion)
     }
 
     public func resetForTests() {
         defaults.removeObject(forKey: Keys.settings)
         defaults.removeObject(forKey: Keys.hasCompletedFirstLaunch)
         defaults.removeObject(forKey: Keys.hasCompletedOnboarding)
+        defaults.removeObject(forKey: Keys.completedOnboardingVersion)
     }
 }

@@ -37,6 +37,26 @@ enum LiquidGlassProminence {
 
 typealias GlassProminence = LiquidGlassProminence
 
+private struct LiquidGlassMotionPreferenceKey: EnvironmentKey {
+    static let defaultValue = false
+}
+
+private struct LiquidGlassTransparencyPreferenceKey: EnvironmentKey {
+    static let defaultValue = false
+}
+
+extension EnvironmentValues {
+    var liquidGlassReduceMotion: Bool {
+        get { self[LiquidGlassMotionPreferenceKey.self] }
+        set { self[LiquidGlassMotionPreferenceKey.self] = newValue }
+    }
+
+    var liquidGlassReduceTransparency: Bool {
+        get { self[LiquidGlassTransparencyPreferenceKey.self] }
+        set { self[LiquidGlassTransparencyPreferenceKey.self] = newValue }
+    }
+}
+
 enum LiquidGlassPalette {
     static let accent = Color(nsColor: .systemBlue)
     static let privacyAccent = Color(nsColor: .systemGreen)
@@ -58,29 +78,29 @@ enum LiquidGlassPalette {
         let opacity: Double
         switch (colorScheme, prominence) {
         case (.dark, .sidebar), (.dark, .rail):
-            opacity = 0.048
+            opacity = 0.024
         case (.dark, .header), (.dark, .menu):
-            opacity = 0.044
+            opacity = 0.022
         case (.dark, .card), (.dark, .onboarding):
-            opacity = 0.036
+            opacity = 0.018
         case (.dark, .control), (.dark, .menuItem), (.dark, .hud):
-            opacity = 0.060
+            opacity = 0.034
         case (.dark, .footer):
-            opacity = 0.040
+            opacity = 0.022
         case (_, .sidebar), (_, .rail):
-            opacity = 0.055
+            opacity = 0.030
         case (_, .header), (_, .menu):
-            opacity = 0.060
+            opacity = 0.034
         case (_, .card), (_, .onboarding):
-            opacity = 0.048
+            opacity = 0.026
         case (_, .control), (_, .menuItem):
-            return Color.black.opacity(0.034 * contrastBoost)
+            return Color.white.opacity(0.042 * contrastBoost)
         case (_, .hud):
-            opacity = 0.085
-        case (_, .footer):
             opacity = 0.050
+        case (_, .footer):
+            opacity = 0.030
         }
-        return Color.white.opacity(min(0.18, opacity * contrastBoost))
+        return Color.white.opacity(min(0.16, opacity * contrastBoost))
     }
 
     static func border(
@@ -122,16 +142,27 @@ enum LiquidGlassPalette {
 
         switch (colorScheme, prominence) {
         case (.dark, .control), (.dark, .menuItem), (.dark, .hud):
-            return 0.84
+            return 0.92
         case (.dark, _):
-            return 0.76
+            return 0.88
         case (_, .control), (_, .menuItem), (_, .hud):
-            return 0.86
+            return 0.94
         case (_, .header), (_, .sidebar), (_, .rail), (_, .menu):
-            return 0.80
+            return 0.91
         case (_, .card), (_, .footer), (_, .onboarding):
-            return 0.72
+            return 0.86
         }
+    }
+
+    static func edgeGlow(_ colorScheme: ColorScheme, increasedContrast: Bool = false) -> Color {
+        if increasedContrast {
+            return colorScheme == .dark ? Color.white.opacity(0.30) : Color.white.opacity(0.42)
+        }
+        return colorScheme == .dark ? Color.white.opacity(0.15) : Color.white.opacity(0.30)
+    }
+
+    static func hoverBloom(_ colorScheme: ColorScheme) -> Color {
+        colorScheme == .dark ? Color.white.opacity(0.16) : Color.white.opacity(0.34)
     }
 }
 
@@ -180,6 +211,21 @@ extension View {
                 isProminent: isProminent
             )
         )
+    }
+
+    func liquidGlassPreferencesFromSystem() -> some View {
+        modifier(LiquidGlassSystemPreferenceModifier())
+    }
+}
+
+private struct LiquidGlassSystemPreferenceModifier: ViewModifier {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+
+    func body(content: Content) -> some View {
+        content
+            .environment(\.liquidGlassReduceMotion, reduceMotion)
+            .environment(\.liquidGlassReduceTransparency, reduceTransparency)
     }
 }
 
@@ -233,6 +279,9 @@ private struct LiquidGlassSurfaceModifier: ViewModifier {
                     .stroke(topHighlight(increasedContrast: increasedContrast), lineWidth: 0.55)
                     .padding(0.55)
             }
+            .overlay {
+                LiquidGlassEdgeGlow(shape: shape, prominence: prominence)
+            }
             .shadow(color: shadowColor, radius: shadowRadius, x: 0, y: shadowY)
     }
 
@@ -247,7 +296,7 @@ private struct LiquidGlassSurfaceModifier: ViewModifier {
         if increasedContrast {
             return colorScheme == .dark ? Color.white.opacity(0.20) : Color.white.opacity(0.34)
         }
-        return colorScheme == .dark ? Color.white.opacity(0.085) : Color.white.opacity(0.22)
+        return colorScheme == .dark ? Color.white.opacity(0.13) : Color.white.opacity(0.30)
     }
 
     private var shadowColor: Color {
@@ -289,6 +338,36 @@ private struct LiquidGlassSurfaceModifier: ViewModifier {
             return 9
         case .footer:
             return 6
+        }
+    }
+}
+
+private struct LiquidGlassEdgeGlow<S: InsettableShape>: View {
+    let shape: S
+    let prominence: LiquidGlassProminence
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
+    @Environment(\.liquidGlassReduceTransparency) private var reduceTransparency
+
+    var body: some View {
+        if !reduceTransparency {
+            shape
+                .strokeBorder(
+                    LinearGradient(
+                        colors: [
+                            LiquidGlassPalette.edgeGlow(
+                                colorScheme,
+                                increasedContrast: colorSchemeContrast == .increased
+                            ),
+                            Color.white.opacity(colorScheme == .dark ? 0.035 : 0.090),
+                            Color.clear
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: prominence == .control ? 0.7 : 1.0
+                )
+                .blendMode(.screen)
         }
     }
 }
@@ -338,9 +417,10 @@ struct GlassHoverExpansion: ViewModifier {
     var isProminent = false
 
     @State private var isHovered = false
+    @State private var shimmerOffset: CGFloat = -1.15
     @Environment(\.colorScheme) private var colorScheme
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.liquidGlassReduceMotion) private var reduceMotion
+    @Environment(\.liquidGlassReduceTransparency) private var reduceTransparency
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
 
     func body(content: Content) -> some View {
@@ -364,10 +444,29 @@ struct GlassHoverExpansion: ViewModifier {
                     lineWidth: increasedContrast ? 0.9 : 0.7
                 )
             }
-            .scaleEffect(shouldHighlight && isProminent ? 1.006 : 1)
+            .overlay {
+                if shouldHighlight && !reduceTransparency {
+                    HoverShimmer(shape: shape, offset: shimmerOffset, isProminent: isProminent)
+                }
+            }
+            .scaleEffect(shouldHighlight && isProminent ? 1.010 : 1)
             .contentShape(shape)
             .animation(reduceMotion ? nil : .easeOut(duration: 0.16), value: shouldHighlight)
-            .onHover { isHovered = $0 }
+            .onHover { hovering in
+                isHovered = hovering
+                guard !reduceMotion else {
+                    shimmerOffset = hovering ? 0.18 : -1.15
+                    return
+                }
+                if hovering {
+                    shimmerOffset = -1.15
+                    withAnimation(.easeOut(duration: 0.72)) {
+                        shimmerOffset = 1.20
+                    }
+                } else {
+                    shimmerOffset = -1.15
+                }
+            }
     }
 
     private func hoverFill(increasedContrast: Bool) -> Color {
@@ -375,9 +474,45 @@ struct GlassHoverExpansion: ViewModifier {
             return Color(nsColor: .selectedContentBackgroundColor).opacity(increasedContrast ? 0.16 : 0.10)
         }
         if colorScheme == .dark {
-            return Color.white.opacity(increasedContrast ? 0.075 : 0.044)
+            return Color.white.opacity(increasedContrast ? 0.095 : 0.058)
         }
-        return Color.white.opacity(increasedContrast ? 0.26 : 0.17)
+        return Color.white.opacity(increasedContrast ? 0.32 : 0.22)
     }
 }
 
+private struct HoverShimmer<S: Shape>: View {
+    let shape: S
+    let offset: CGFloat
+    let isProminent: Bool
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        GeometryReader { proxy in
+            let width = max(proxy.size.width, 1)
+            let height = max(proxy.size.height, 1)
+            let travel = width + height
+
+            Rectangle()
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color.clear,
+                            Color.white.opacity(colorScheme == .dark ? 0.08 : 0.12),
+                            LiquidGlassPalette.hoverBloom(colorScheme).opacity(isProminent ? 1 : 0.74),
+                            Color.white.opacity(colorScheme == .dark ? 0.08 : 0.12),
+                            Color.clear
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+                .frame(width: max(36, width * 0.34), height: travel * 1.4)
+                .rotationEffect(.degrees(23))
+                .offset(x: -travel * 0.55 + travel * offset, y: -height * 0.42)
+                .blur(radius: isProminent ? 5.5 : 4.0)
+                .blendMode(.screen)
+        }
+        .clipShape(shape)
+        .allowsHitTesting(false)
+    }
+}
