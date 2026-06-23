@@ -3,15 +3,15 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ASSET_DIR="$ROOT_DIR/assets"
-SOURCE_SVG="$ASSET_DIR/heimama-icon.svg"
+SOURCE_IMAGE="$ASSET_DIR/heimama-icon-source.png"
 STATUS_SVG="$ASSET_DIR/heimama-status-template.svg"
 ICONSET_DIR="$ASSET_DIR/heimama-icon.iconset"
 OUTPUT_ICNS="$ASSET_DIR/heimama-icon.icns"
 STATUS_PNG="$ASSET_DIR/heimama-status-template.png"
 BASE_PNG="$ASSET_DIR/heimama-icon-1024.png"
 
-if [[ ! -f "$SOURCE_SVG" ]]; then
-    echo "Missing icon source: $SOURCE_SVG" >&2
+if [[ ! -f "$SOURCE_IMAGE" ]]; then
+    echo "Missing icon source: $SOURCE_IMAGE" >&2
     exit 1
 fi
 
@@ -24,65 +24,22 @@ mkdir -p "$ASSET_DIR"
 rm -rf "$ICONSET_DIR"
 mkdir -p "$ICONSET_DIR"
 
-if command -v qlmanage >/dev/null 2>&1; then
-    rm -f "$BASE_PNG"
-    qlmanage -t -s 1024 -o "$ASSET_DIR" "$SOURCE_SVG" >/dev/null 2>&1 || true
-    if [[ -f "$ASSET_DIR/$(basename "$SOURCE_SVG").png" ]]; then
-        mv "$ASSET_DIR/$(basename "$SOURCE_SVG").png" "$BASE_PNG"
-    fi
-fi
-
-if [[ ! -f "$BASE_PNG" ]]; then
-    python3 - "$SOURCE_SVG" "$BASE_PNG" <<'PY'
-import re
+rm -f "$BASE_PNG"
+python3 - "$SOURCE_IMAGE" "$BASE_PNG" <<'PY'
 import sys
-from xml.etree import ElementTree as ET
 
 try:
-    from PIL import Image, ImageDraw
+    from PIL import Image
 except ImportError:
-    sys.stderr.write("Pillow is required when qlmanage cannot render SVG.\n")
+    sys.stderr.write("Pillow is required to normalize the app icon source image.\n")
     raise
 
-svg_path, out_path = sys.argv[1], sys.argv[2]
-tree = ET.parse(svg_path)
-root = tree.getroot()
-image = Image.new("RGBA", (1024, 1024), (0, 0, 0, 0))
-draw = ImageDraw.Draw(image)
-
-def color(value):
-    value = value.strip()
-    if value.startswith("#") and len(value) == 7:
-        return tuple(int(value[i:i + 2], 16) for i in (1, 3, 5)) + (255,)
-    raise ValueError(f"Unsupported color: {value}")
-
-def numbers(value):
-    return [float(part) for part in re.findall(r"-?\d+(?:\.\d+)?", value)]
-
-for element in root:
-    tag = element.tag.split("}")[-1]
-    fill = color(element.attrib.get("fill", "#000000"))
-    if tag == "rect":
-        x = float(element.attrib.get("x", 0))
-        y = float(element.attrib.get("y", 0))
-        width = float(element.attrib["width"])
-        height = float(element.attrib["height"])
-        radius = float(element.attrib.get("rx", 0))
-        draw.rounded_rectangle((x, y, x + width, y + height), radius=radius, fill=fill)
-    elif tag == "circle":
-        cx = float(element.attrib["cx"])
-        cy = float(element.attrib["cy"])
-        r = float(element.attrib["r"])
-        draw.ellipse((cx - r, cy - r, cx + r, cy + r), fill=fill)
-    elif tag == "path":
-        pts = numbers(element.attrib["d"])
-        coords = list(zip(pts[0::2], pts[1::2]))
-        if coords:
-            draw.polygon(coords, fill=fill)
-
+source_path, out_path = sys.argv[1], sys.argv[2]
+image = Image.open(source_path).convert("RGBA")
+if image.size != (1024, 1024):
+    image = image.resize((1024, 1024), Image.Resampling.LANCZOS)
 image.save(out_path)
 PY
-fi
 
 for size in 16 32 128 256 512; do
     sips -z "$size" "$size" "$BASE_PNG" --out "$ICONSET_DIR/icon_${size}x${size}.png" >/dev/null

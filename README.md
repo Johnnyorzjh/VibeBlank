@@ -109,7 +109,7 @@ flowchart LR
 | `Sources/VibeBlank/` | macOS app、菜单栏、遮罩窗口、设置 UI |
 | `Sources/VibeBlankCore/` | 可测试的设置模型和持久化逻辑 |
 | `Checks/VibeBlankCoreChecks/` | 不依赖 XCTest 的核心行为检查 |
-| `assets/` | 小黑马 SVG、菜单栏图标和 `.icns` |
+| `assets/` | App 图标源图、菜单栏 template 图标和 `.icns` |
 | `scripts/generate_icon.sh` | 从源图生成 app 图标和菜单栏图标 |
 | `scripts/package_app.sh` | 构建 release 二进制并打包 `.app` / `.zip` / `.dmg` |
 | `docs/` | 版本需求、技术方案和实现计划 |
