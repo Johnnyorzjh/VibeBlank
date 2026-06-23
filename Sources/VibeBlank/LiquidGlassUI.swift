@@ -37,6 +37,12 @@ enum LiquidGlassProminence {
 
 typealias GlassProminence = LiquidGlassProminence
 
+enum LiquidGlassEdgeMode {
+    case structural
+    case floating
+    case interactive
+}
+
 private struct LiquidGlassMotionPreferenceKey: EnvironmentKey {
     static let defaultValue = false
 }
@@ -172,13 +178,15 @@ extension View {
     func liquidGlassSurface(
         cornerRadius: CGFloat,
         material: NSVisualEffectView.Material,
-        prominence: LiquidGlassProminence
+        prominence: LiquidGlassProminence,
+        edgeMode: LiquidGlassEdgeMode = .floating
     ) -> some View {
         modifier(
             LiquidGlassSurfaceModifier(
                 cornerRadius: cornerRadius,
                 material: material,
-                prominence: prominence
+                prominence: prominence,
+                edgeMode: edgeMode
             )
         )
     }
@@ -190,9 +198,15 @@ extension View {
     func brightGlass(
         cornerRadius: CGFloat,
         material: NSVisualEffectView.Material,
-        prominence: LiquidGlassProminence
+        prominence: LiquidGlassProminence,
+        edgeMode: LiquidGlassEdgeMode = .floating
     ) -> some View {
-        liquidGlassSurface(cornerRadius: cornerRadius, material: material, prominence: prominence)
+        liquidGlassSurface(
+            cornerRadius: cornerRadius,
+            material: material,
+            prominence: prominence,
+            edgeMode: edgeMode
+        )
     }
 
     func glassControl(cornerRadius: CGFloat, isActive: Bool) -> some View {
@@ -202,13 +216,15 @@ extension View {
     func glassHoverExpansion(
         cornerRadius: CGFloat,
         isEnabled: Bool = true,
-        isProminent: Bool = false
+        isProminent: Bool = false,
+        allowsScale: Bool = false
     ) -> some View {
         modifier(
             GlassHoverExpansion(
                 cornerRadius: cornerRadius,
                 isEnabled: isEnabled,
-                isProminent: isProminent
+                isProminent: isProminent,
+                allowsScale: allowsScale
             )
         )
     }
@@ -233,6 +249,7 @@ private struct LiquidGlassSurfaceModifier: ViewModifier {
     let cornerRadius: CGFloat
     let material: NSVisualEffectView.Material
     let prominence: LiquidGlassProminence
+    let edgeMode: LiquidGlassEdgeMode
 
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
@@ -266,26 +283,42 @@ private struct LiquidGlassSurfaceModifier: ViewModifier {
             }
             .overlay {
                 shape.stroke(
-                    LiquidGlassPalette.border(
-                        colorScheme,
-                        reduceTransparency: reduceTransparency,
-                        increasedContrast: increasedContrast
-                    ),
+                    borderColor(increasedContrast: increasedContrast),
                     lineWidth: borderWidth(increasedContrast: increasedContrast)
                 )
             }
             .overlay(alignment: .topLeading) {
-                shape
-                    .stroke(topHighlight(increasedContrast: increasedContrast), lineWidth: 0.55)
-                    .padding(0.55)
+                if edgeMode != .structural {
+                    shape
+                        .stroke(topHighlight(increasedContrast: increasedContrast), lineWidth: 0.55)
+                        .padding(0.55)
+                }
             }
             .overlay {
-                LiquidGlassEdgeGlow(shape: shape, prominence: prominence)
+                LiquidGlassEdgeGlow(shape: shape, prominence: prominence, edgeMode: edgeMode)
             }
             .shadow(color: shadowColor, radius: shadowRadius, x: 0, y: shadowY)
     }
 
+    private func borderColor(increasedContrast: Bool) -> Color {
+        if edgeMode == .structural {
+            return LiquidGlassPalette.hairline(
+                colorScheme,
+                reduceTransparency: reduceTransparency,
+                increasedContrast: increasedContrast
+            )
+        }
+        return LiquidGlassPalette.border(
+            colorScheme,
+            reduceTransparency: reduceTransparency,
+            increasedContrast: increasedContrast
+        )
+    }
+
     private func borderWidth(increasedContrast: Bool) -> CGFloat {
+        if edgeMode == .structural {
+            return increasedContrast ? 0.75 : 0.45
+        }
         if increasedContrast {
             return prominence == .control ? 0.8 : 1.05
         }
@@ -306,7 +339,7 @@ private struct LiquidGlassSurfaceModifier: ViewModifier {
     private var shadowRadius: CGFloat {
         switch prominence {
         case .sidebar, .rail:
-            return 30
+            return edgeMode == .structural ? 18 : 30
         case .header:
             return 24
         case .card, .onboarding:
@@ -325,7 +358,7 @@ private struct LiquidGlassSurfaceModifier: ViewModifier {
     private var shadowY: CGFloat {
         switch prominence {
         case .sidebar, .rail:
-            return 12
+            return edgeMode == .structural ? 6 : 12
         case .header:
             return 7
         case .card, .onboarding:
@@ -345,12 +378,13 @@ private struct LiquidGlassSurfaceModifier: ViewModifier {
 private struct LiquidGlassEdgeGlow<S: InsettableShape>: View {
     let shape: S
     let prominence: LiquidGlassProminence
+    let edgeMode: LiquidGlassEdgeMode
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
     @Environment(\.liquidGlassReduceTransparency) private var reduceTransparency
 
     var body: some View {
-        if !reduceTransparency {
+        if !reduceTransparency && edgeMode != .structural {
             shape
                 .strokeBorder(
                     LinearGradient(
@@ -365,7 +399,7 @@ private struct LiquidGlassEdgeGlow<S: InsettableShape>: View {
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     ),
-                    lineWidth: prominence == .control ? 0.7 : 1.0
+                    lineWidth: edgeMode == .interactive || prominence == .control ? 0.7 : 1.0
                 )
                 .blendMode(.screen)
         }
@@ -415,6 +449,7 @@ struct GlassHoverExpansion: ViewModifier {
     let cornerRadius: CGFloat
     var isEnabled = true
     var isProminent = false
+    var allowsScale = false
 
     @State private var isHovered = false
     @State private var shimmerOffset: CGFloat = -1.15
@@ -449,7 +484,7 @@ struct GlassHoverExpansion: ViewModifier {
                     HoverShimmer(shape: shape, offset: shimmerOffset, isProminent: isProminent)
                 }
             }
-            .scaleEffect(shouldHighlight && isProminent ? 1.010 : 1)
+            .scaleEffect(shouldHighlight && isProminent && allowsScale ? 1.006 : 1)
             .contentShape(shape)
             .animation(reduceMotion ? nil : .easeOut(duration: 0.16), value: shouldHighlight)
             .onHover { hovering in

@@ -18,7 +18,7 @@ final class OnboardingWindowController {
         self.start = start
 
         window = NSPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 1180, height: 560),
+            contentRect: NSRect(x: 0, y: 0, width: 1120, height: 680),
             styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
             backing: .buffered,
             defer: false

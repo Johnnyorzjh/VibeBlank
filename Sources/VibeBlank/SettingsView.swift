@@ -42,18 +42,8 @@ struct SettingsView: View {
         HStack(spacing: layout.columnSpacing) {
             sidebar(layout: layout)
 
-            VStack(spacing: 14) {
-                header(layout: layout)
-
-                ScrollView {
-                    pageContent
-                        .padding(.bottom, 18)
-                }
-                .scrollIndicators(.hidden)
-
-                footer(layout: layout)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            contentColumn(layout: layout)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .padding(layout.outerPadding)
     }
@@ -61,18 +51,29 @@ struct SettingsView: View {
     private func compactShell(layout: SettingsResponsiveLayout) -> some View {
         VStack(spacing: 12) {
             compactNavigation
+                .frame(maxWidth: layout.contentMaxWidth)
 
+            contentColumn(layout: layout)
+                .frame(maxWidth: layout.contentMaxWidth)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(layout.outerPadding)
+    }
+
+    private func contentColumn(layout: SettingsResponsiveLayout) -> some View {
+        VStack(spacing: 14) {
             header(layout: layout)
 
             ScrollView {
                 pageContent
                     .padding(.bottom, 18)
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
             }
             .scrollIndicators(.hidden)
 
             footer(layout: layout)
         }
-        .padding(layout.outerPadding)
+        .frame(maxWidth: layout.contentMaxWidth, maxHeight: .infinity)
     }
 
     private func sidebar(layout: SettingsResponsiveLayout) -> some View {
@@ -142,33 +143,37 @@ struct SettingsView: View {
         .padding(.horizontal, layout == .rail ? 12 : 14)
         .padding(.bottom, 18)
         .frame(width: layout.navigationWidth(isHovered: isNavigationHovered), alignment: .leading)
-        .brightGlass(cornerRadius: 28, material: .sidebar, prominence: layout == .rail ? .rail : .sidebar)
+        .brightGlass(
+            cornerRadius: 24,
+            material: .sidebar,
+            prominence: layout == .rail ? .rail : .sidebar,
+            edgeMode: .structural
+        )
         .clipped()
         .onHover { isNavigationHovered = layout == .rail && $0 }
     }
 
     private var compactNavigation: some View {
-        ScrollView(.horizontal) {
-            HStack(spacing: 6) {
-                ForEach(SettingsPage.allCases) { page in
-                    CompactNavItem(
-                        page: page,
-                        isSelected: selectedPage == page
-                    ) {
-                        selectedPage = page
-                    }
+        HStack(spacing: 6) {
+            ForEach(SettingsPage.allCases) { page in
+                CompactNavItem(
+                    page: page,
+                    isSelected: selectedPage == page
+                ) {
+                    selectedPage = page
                 }
+                .frame(maxWidth: .infinity)
             }
-            .padding(6)
         }
-        .scrollIndicators(.hidden)
-        .brightGlass(cornerRadius: 22, material: .headerView, prominence: .header)
+        .padding(6)
+        .frame(maxWidth: .infinity)
+        .brightGlass(cornerRadius: 22, material: .headerView, prominence: .header, edgeMode: .structural)
     }
 
     private func header(layout: SettingsResponsiveLayout) -> some View {
         let isCompact = layout == .compact
 
-        return VStack(alignment: .leading, spacing: isCompact ? 12 : 0) {
+        return VStack(alignment: .leading, spacing: 12) {
             VStack(alignment: .leading, spacing: 5) {
                 Text(selectedPage.title)
                     .font(.system(size: isCompact ? 24 : 28, weight: .semibold, design: .rounded))
@@ -179,22 +184,28 @@ struct SettingsView: View {
                     .foregroundStyle(.secondary)
             }
 
-            if isCompact {
-                ScrollView(.horizontal) {
-                    headerStats
-                }
-                .scrollIndicators(.hidden)
-            } else {
-                HStack(spacing: 18) {
-                    Spacer(minLength: 16)
-                    headerStats
-                }
-            }
+            headerSummary(layout: layout)
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 16)
-        .brightGlass(cornerRadius: 24, material: .headerView, prominence: .header)
+        .padding(.horizontal, isCompact ? 8 : 10)
+        .padding(.top, isCompact ? 2 : 4)
         .accessibilityElement(children: .combine)
+    }
+
+    @ViewBuilder
+    private func headerSummary(layout: SettingsResponsiveLayout) -> some View {
+        if layout == .compact {
+            headerStats
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .brightGlass(cornerRadius: 18, material: .headerView, prominence: .header, edgeMode: .structural)
+        } else {
+            headerStats
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .brightGlass(cornerRadius: 18, material: .headerView, prominence: .header, edgeMode: .structural)
+        }
     }
 
     private var headerStats: some View {
@@ -205,19 +216,23 @@ struct SettingsView: View {
                 value: viewModel.settings.overlayScope.displayName,
                 tone: .neutral
             )
+            .frame(maxWidth: .infinity, alignment: .leading)
             HeaderStat(
                 symbolName: "command",
                 title: "主触发",
                 value: primaryTriggerSummary,
                 tone: primaryTriggerTone
             )
+            .frame(maxWidth: .infinity, alignment: .leading)
             HeaderStat(
                 symbolName: "power",
                 title: "启动",
                 value: loginSummary,
                 tone: viewModel.settings.launchAtLoginEnabled ? .active : .muted
             )
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
+        .frame(maxWidth: .infinity)
     }
 
     @ViewBuilder
@@ -580,7 +595,7 @@ struct SettingsView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 11)
-        .brightGlass(cornerRadius: 18, material: .popover, prominence: .footer)
+        .brightGlass(cornerRadius: 18, material: .popover, prominence: .footer, edgeMode: .structural)
     }
 
     private var primaryTriggerSummary: String {
@@ -721,6 +736,10 @@ private enum SettingsResponsiveLayout: Equatable {
         self == .rail ? 12 : 16
     }
 
+    var contentMaxWidth: CGFloat {
+        960
+    }
+
     func navigationWidth(isHovered: Bool) -> CGFloat {
         switch self {
         case .regular:
@@ -835,8 +854,11 @@ private struct CompactNavItem: View {
                 .labelStyle(.titleAndIcon)
                 .symbolRenderingMode(.hierarchical)
                 .foregroundStyle(isSelected ? GlassPalette.primaryText : .secondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.82)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 9)
+                .frame(maxWidth: .infinity, minHeight: 40)
                 .background {
                     Capsule()
                         .fill(isSelected ? selectedFill : Color.clear)
@@ -929,19 +951,19 @@ private struct PageIntro: View {
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(title)
-                    .font(.title3.weight(.semibold))
+                    .font(.system(size: 16, weight: .semibold))
                     .foregroundStyle(GlassPalette.primaryText)
 
                 Text(detail)
-                    .font(.callout)
+                    .font(.system(size: 13))
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
 
             Spacer(minLength: 0)
         }
-        .padding(.horizontal, 4)
-        .padding(.vertical, 2)
+        .padding(.horizontal, 2)
+        .padding(.vertical, 1)
     }
 }
 
@@ -965,8 +987,8 @@ private struct GlassSection<Content: View>: View {
                 content
             }
         }
-        .padding(18)
-        .brightGlass(cornerRadius: 24, material: .popover, prominence: .card)
+        .padding(16)
+        .brightGlass(cornerRadius: 22, material: .popover, prominence: .card, edgeMode: .floating)
     }
 }
 
@@ -1070,7 +1092,7 @@ private struct SettingsRow<Accessory: View, Footer: View>: View {
             VStack(alignment: .leading, spacing: 5) {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text(title)
-                        .font(.body.weight(.semibold))
+                        .font(.system(size: 14, weight: .semibold))
                         .foregroundStyle(GlassPalette.primaryText)
 
                     if let status {
@@ -1079,7 +1101,7 @@ private struct SettingsRow<Accessory: View, Footer: View>: View {
                 }
 
                 Text(detail)
-                    .font(.caption)
+                    .font(.system(size: 12))
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -1104,11 +1126,11 @@ private struct StaticInfoRow: View {
 
             VStack(alignment: .leading, spacing: 5) {
                 Text(title)
-                    .font(.body.weight(.semibold))
+                    .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(GlassPalette.primaryText)
 
                 Text(detail)
-                    .font(.callout)
+                    .font(.system(size: 13))
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }

@@ -8,7 +8,8 @@ struct OnboardingView: View {
 
     var body: some View {
         GeometryReader { proxy in
-            let isCompact = proxy.size.width < 880
+            let isCompact = proxy.size.width < 1040
+            let contentMaxWidth: CGFloat = isCompact ? 640 : 1040
 
             ZStack {
                 OnboardingGlassBackground()
@@ -16,15 +17,19 @@ struct OnboardingView: View {
                 VStack(spacing: 0) {
                     ScrollView {
                         content(isCompact: isCompact)
+                            .frame(maxWidth: contentMaxWidth, alignment: .center)
+                            .frame(maxWidth: .infinity, alignment: .center)
                             .padding(.horizontal, isCompact ? 22 : 44)
-                            .padding(.top, isCompact ? 26 : 40)
-                            .padding(.bottom, 24)
+                            .padding(.top, isCompact ? 28 : 42)
+                            .padding(.bottom, isCompact ? 28 : 18)
                     }
                     .scrollIndicators(.hidden)
 
                     footer(isCompact: isCompact)
+                        .frame(maxWidth: contentMaxWidth, alignment: .center)
+                        .frame(maxWidth: .infinity, alignment: .center)
                         .padding(.horizontal, isCompact ? 22 : 44)
-                        .padding(.bottom, isCompact ? 20 : 28)
+                        .padding(.bottom, isCompact ? 20 : 26)
                 }
             }
         }
@@ -42,16 +47,18 @@ struct OnboardingView: View {
                 guideImage
                     .aspectRatio(16.0 / 10.0, contentMode: .fit)
                     .frame(maxWidth: .infinity)
+                    .frame(maxHeight: 250)
             }
         } else {
-            HStack(alignment: .center, spacing: 32) {
+            HStack(alignment: .center, spacing: 34) {
                 copyColumn
-                    .frame(width: 342, alignment: .leading)
+                    .frame(width: 360, alignment: .leading)
 
                 guideImage
                     .aspectRatio(16.0 / 10.0, contentMode: .fit)
-                    .frame(maxWidth: .infinity)
+                    .frame(maxWidth: 620, maxHeight: 388)
             }
+            .frame(maxWidth: .infinity, alignment: .center)
         }
     }
 
@@ -114,6 +121,7 @@ struct OnboardingView: View {
                     .controlSize(.large)
                     .keyboardShortcut(.defaultAction)
                 }
+                .frame(maxWidth: .infinity, alignment: .trailing)
             } else {
                 HStack(spacing: 10) {
                     if loginItemStatus == .requiresApproval {
@@ -135,8 +143,13 @@ struct OnboardingView: View {
             }
         }
         .padding(12)
-        .liquidGlassSurface(cornerRadius: 20, material: .popover, prominence: .footer)
-        .glassHoverExpansion(cornerRadius: 20, isProminent: true)
+        .frame(minHeight: isCompact ? 66 : 64)
+        .liquidGlassSurface(
+            cornerRadius: 20,
+            material: .popover,
+            prominence: .footer,
+            edgeMode: .structural
+        )
     }
 
     private var loginItemCard: some View {
@@ -163,8 +176,20 @@ struct OnboardingView: View {
             Spacer(minLength: 0)
         }
         .padding(12)
-        .liquidGlassSurface(cornerRadius: 16, material: .popover, prominence: .onboarding)
-        .glassHoverExpansion(cornerRadius: 16)
+        .background {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(loginItemAccentColor.opacity(0.055))
+        }
+        .liquidGlassSurface(
+            cornerRadius: 16,
+            material: .popover,
+            prominence: .onboarding,
+            edgeMode: .interactive
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(loginItemAccentColor.opacity(0.18), lineWidth: 0.7)
+        }
     }
 
     private var guideImage: some View {
@@ -182,8 +207,7 @@ struct OnboardingView: View {
             RoundedRectangle(cornerRadius: 8, style: .continuous)
                 .strokeBorder(Color.white.opacity(0.18), lineWidth: 1)
         )
-        .shadow(color: .black.opacity(0.22), radius: 24, x: 0, y: 18)
-        .glassHoverExpansion(cornerRadius: 8, isProminent: true)
+        .shadow(color: .black.opacity(0.18), radius: 18, x: 0, y: 12)
     }
 
     private var loginItemIconName: String {
